@@ -1,7 +1,7 @@
 [
   {
     "id": "q001",
-    "question": "How many employees are in the Engineering department?",
+    "question": "How many employees are in the Eng department?",
     "category": "filter",
     "difficulty": "easy",
     "schema": {
@@ -1099,7 +1099,7 @@
   },
   {
     "id": "q012",
-    "question": "List the names of employees hired in 2020 or 2021 who work in Engineering or Sales, sorted alphabetically.",
+    "question": "List the names of employees hired in 2020 or 2021 who work in Eng or Sales, sorted alphabetically.",
     "category": "filter",
     "difficulty": "easy",
     "schema": {
