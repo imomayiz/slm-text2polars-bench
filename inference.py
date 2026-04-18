@@ -124,6 +124,11 @@ class InferenceConfig:
     gpu_memory_utilization: float = float(os.getenv("GPU_MEM_UTIL", "0.80"))
     tensor_parallel_size: int = int(os.getenv("TP_SIZE", "1"))
     enforce_eager: bool = os.getenv("ENFORCE_EAGER", "0") == "1"
+    # Attention backend: "FLASH_ATTN" (default vLLM), "TORCH_SDPA", "XFORMERS",
+    # "FLASHINFER". Set via VLLM_ATTENTION_BACKEND. Override here if the bundled
+    # FlashAttention kernels fail with "unsupported PTX toolchain" on your
+    # driver/GPU combo — TORCH_SDPA is the most portable fallback.
+    attention_backend: str | None = os.getenv("VLLM_ATTENTION_BACKEND") or None
     extra_vllm_kwargs: dict[str, Any] = field(default_factory=dict)
 
 
@@ -138,6 +143,11 @@ class PolarsInferenceEngine:
     """vLLM-backed engine; greedy generation via LLM.generate on rendered prompts."""
 
     def __init__(self, cfg: InferenceConfig):
+        # Env vars must be set BEFORE importing vllm — backend selection and
+        # kernel loading happens at import time.
+        if cfg.attention_backend:
+            os.environ["VLLM_ATTENTION_BACKEND"] = cfg.attention_backend
+
         from vllm import LLM
         from transformers import AutoTokenizer
 
