@@ -98,8 +98,7 @@ def format_schema(schema: dict[str, dict[str, str]]) -> str:
     )
 
 
-# Import routing from generator (single source of truth)
-from generator import API_SNIPPETS, classify_question
+from prompt_routing import API_SNIPPETS, classify_question
 
 
 def build_messages(
