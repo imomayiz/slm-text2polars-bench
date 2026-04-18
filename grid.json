@@ -1,14 +1,21 @@
 [
-  {
-    "model": "Qwen/Qwen3-4B-Instruct-2507",
-    "prompt": "baseline",
-    "use_routing": true,
-    "tag": "light"
-  },
-  {
-    "model": "Qwen/Qwen2.5-Coder-7B-Instruct",
-    "prompt": "baseline",
-    "use_routing": true,
-    "tag": "light"
-  }
+  { "model": "Qwen/Qwen2.5-Coder-1.5B-Instruct", "prompt": "baseline",   "use_routing": true,  "tag": "full" },
+  { "model": "Qwen/Qwen2.5-Coder-1.5B-Instruct", "prompt": "baseline",   "use_routing": false, "tag": "full" },
+  { "model": "Qwen/Qwen2.5-Coder-1.5B-Instruct", "prompt": "terse",      "use_routing": true,  "tag": "full" },
+  { "model": "Qwen/Qwen2.5-Coder-1.5B-Instruct", "prompt": "no_fewshot", "use_routing": true,  "tag": "full" },
+
+  { "model": "Qwen/Qwen3-4B-Instruct-2507",      "prompt": "baseline",   "use_routing": true,  "tag": "full" },
+  { "model": "Qwen/Qwen3-4B-Instruct-2507",      "prompt": "baseline",   "use_routing": false, "tag": "full" },
+  { "model": "Qwen/Qwen3-4B-Instruct-2507",      "prompt": "terse",      "use_routing": true,  "tag": "full" },
+  { "model": "Qwen/Qwen3-4B-Instruct-2507",      "prompt": "no_fewshot", "use_routing": true,  "tag": "full" },
+
+  { "model": "google/gemma-4-E2B-it",            "prompt": "baseline",   "use_routing": true,  "tag": "full" },
+  { "model": "google/gemma-4-E2B-it",            "prompt": "baseline",   "use_routing": false, "tag": "full" },
+  { "model": "google/gemma-4-E2B-it",            "prompt": "terse",      "use_routing": true,  "tag": "full" },
+  { "model": "google/gemma-4-E2B-it",            "prompt": "no_fewshot", "use_routing": true,  "tag": "full" },
+
+  { "model": "google/gemma-4-E4B-it",            "prompt": "baseline",   "use_routing": true,  "tag": "full" },
+  { "model": "google/gemma-4-E4B-it",            "prompt": "baseline",   "use_routing": false, "tag": "full" },
+  { "model": "google/gemma-4-E4B-it",            "prompt": "terse",      "use_routing": true,  "tag": "full" },
+  { "model": "google/gemma-4-E4B-it",            "prompt": "no_fewshot", "use_routing": true,  "tag": "full" }
 ]

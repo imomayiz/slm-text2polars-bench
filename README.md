@@ -80,7 +80,7 @@ Models evaluated:
 | `google/gemma-4-E4B-it` | 4B |
 | `Qwen/Qwen2.5-Coder-7B-Instruct` | 7B |
 
-Best result: **Qwen/Qwen3-4B-Instruct-2507** with baseline prompt + routing enabled — 70% accuracy, score 0.3.
+Best result: **Qwen/Qwen3-4B-Instruct-2507** with baseline prompt + routing enabled — 77% accuracy, score 0.34.
 
 ## Next Steps
 
