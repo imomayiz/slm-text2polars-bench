@@ -1,21 +1,44 @@
-import json
+"""
+FastAPI server 
+Endpoints:
+  GET  /      -> {"status": "ok"}
+  POST /chat  -> {"response": "<polars code>"}
 
-import torch
+Run:
+    uvicorn main:app --host 0.0.0.0 --port 8000
+"""
+from __future__ import annotations
+
+import logging
+import os
+import time
+
 from fastapi import FastAPI
 from pydantic import BaseModel
-from transformers import AutoModelForCausalLM, AutoTokenizer
 
-MODEL_NAME = "Qwen/Qwen2.5-Coder-3B-Instruct"
+from inference import PolarsInferenceEngine, InferenceConfig
+
+log = logging.getLogger("main")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+
+CFG = InferenceConfig(
+    model=os.getenv("MODEL", "Qwen/Qwen2.5-Coder-1.5B-Instruct"),
+    dtype=os.getenv("DTYPE", "bfloat16"),
+    max_model_len=int(os.getenv("MAX_MODEL_LEN", "2048")),
+    gpu_memory_utilization=float(os.getenv("GPU_MEM_UTIL", "0.85")),
+    max_tokens=int(os.getenv("MAX_TOKENS", "256")),
+)
+
+# Load model at module level (matches organizer's pattern)
+log.info(f"Loading model: {CFG.model}")
+t0 = time.perf_counter()
+engine = PolarsInferenceEngine(CFG)
+log.info(f"Model loaded in {time.perf_counter() - t0:.1f}s")
 
 app = FastAPI()
 
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-model = AutoModelForCausalLM.from_pretrained(
-    MODEL_NAME,
-    dtype=torch.float16,
-    device_map="auto",
-)
 
+# ---------- Schemas ----------
 
 class ChatRequest(BaseModel):
     message: str
@@ -26,16 +49,7 @@ class ChatResponse(BaseModel):
     response: str
 
 
-def strip_code_fence(text: str) -> str:
-    text = text.strip()
-    if text.startswith("```python"):
-        text = text[len("```python"):].strip()
-    elif text.startswith("```"):
-        text = text[len("```"):].strip()
-    if text.endswith("```"):
-        text = text[:-3].strip()
-    return text
-
+# ---------- Routes ----------
 
 @app.get("/")
 def health():
@@ -43,44 +57,19 @@ def health():
 
 
 @app.post("/chat", response_model=ChatResponse)
-@torch.inference_mode()
 def chat(payload: ChatRequest) -> ChatResponse:
-    messages = [
-        {
-            "role": "system",
-            "content": (
-                "Return only valid Python Polars code. "
-                "No markdown fences. "
-                "Assign the final Polars DataFrame to result. "
-                f"Available datasets: {json.dumps(payload.tables, ensure_ascii=False)}"
-            ),
-        },
-        {
-            "role": "user",
-            "content": payload.message,
-        },
-    ]
+    # tables is a dict like {"df": {"col1": "Int64", ...}, ...}
+    schema = {}
+    for name, cols in payload.tables.items():
+        if isinstance(cols, dict):
+            schema[name] = {c: str(t) for c, t in cols.items()}
+        else:
+            # Fallback: if tables has unexpected shape, pass as-is
+            schema[name] = cols
 
-    text = tokenizer.apply_chat_template(
-        messages,
-        tokenize=False,
-        add_generation_prompt=True,
+    result = engine.generate_one(
+        question=payload.message,
+        schema=schema,
     )
 
-    inputs = tokenizer(text, return_tensors="pt").to(model.device)
-
-    outputs = model.generate(
-        **inputs,
-        max_new_tokens=256,
-        do_sample=False,
-        pad_token_id=tokenizer.eos_token_id,
-        eos_token_id=tokenizer.eos_token_id,
-        use_cache=True,
-    )
-
-    response = tokenizer.decode(
-        outputs[0][inputs["input_ids"].shape[1]:],
-        skip_special_tokens=True,
-    )
-
-    return ChatResponse(response=strip_code_fence(response))
+    return ChatResponse(response=result.code)
