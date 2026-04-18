@@ -94,6 +94,17 @@ def compute_score(N: int, T: float, vram_gb: float, ram_gb: float) -> float:
     return N / (max(T, 1e-6) * max(vram_gb, 0.01) ** 0.1 * max(ram_gb, 0.01) ** 0.01)
 
 
+def _serialize_value(val: Any) -> str:
+    """Best-effort short string representation of a result value."""
+    if isinstance(val, pl.DataFrame):
+        if val.height <= 5:
+            return val.to_pandas().to_string(index=False)
+        return f"DataFrame({val.height}x{val.width}): {val.head(3).to_pandas().to_string(index=False)} ..."
+    if isinstance(val, pl.Series):
+        return str(val.to_list()[:10])
+    return repr(val)
+
+
 def eval_items(engine: PolarsInferenceEngine, bench: list[dict], timeout: float) -> tuple[int, list[dict]]:
     """Run generate+execute+compare for each bench item. Returns (correct, records)."""
     correct = 0
@@ -104,37 +115,54 @@ def eval_items(engine: PolarsInferenceEngine, bench: list[dict], timeout: float)
         try:
             res = engine.generate_one(question=item["question"], schema=item["schema"])
             code = res.code
+            raw = res.raw
             gen_error = None
         except Exception as e:
             code = ""
+            raw = ""
             gen_error = f"{type(e).__name__}: {e}"
         gen_time = time.perf_counter() - t0
 
+        exec_ok = False
+        is_correct = False
+        err = gen_error
+        got = None
+        expected = None
+
         if code:
             exec_res = run_generated_code(code, frames, timeout=timeout)
+            exec_ok = exec_res.ok
             gold = deserialize_expected(item["expected_output"])
             tol = item.get("tolerance", {})
-            is_correct = exec_res.ok and outputs_match(
-                exec_res.value, gold,
-                order_matters=tol.get("order_matters", False),
-                float_atol=tol.get("float_atol", 1e-6),
-                check_column_names=False,
-            )
-            err = exec_res.error if not exec_res.ok else None
-        else:
-            is_correct = False
-            err = gen_error
+            if exec_ok:
+                is_correct = outputs_match(
+                    exec_res.value, gold,
+                    order_matters=tol.get("order_matters", False),
+                    float_atol=tol.get("float_atol", 1e-6),
+                    check_column_names=False,
+                )
+                if not is_correct:
+                    got = _serialize_value(exec_res.value)
+                    expected = _serialize_value(gold)
+            else:
+                err = exec_res.error
+                expected = _serialize_value(gold)
 
         correct += int(is_correct)
-        records.append({
+        record: dict[str, Any] = {
             "id": item.get("id", ""),
             "question": item["question"],
+            "category": item.get("category", ""),
             "code": code,
-            "exec_ok": bool(code and exec_res.ok),
+            "raw": raw,
+            "exec_ok": exec_ok,
             "correct": is_correct,
             "error": err,
+            "got": got,
+            "expected": expected,
             "gen_time": gen_time,
-        })
+        }
+        records.append(record)
     return correct, records
 
 
@@ -193,6 +221,34 @@ _LEADERBOARD_COLS = [
     "T_total_seconds", "VRAM_GB", "RAM_GB", "score",
     "dtype", "max_model_len", "max_tokens", "tag",
 ]
+
+
+_FAILURES_COLS = [
+    "exp_id", "model", "prompt_variant", "use_routing",
+    "id", "category", "question", "code", "raw",
+    "exec_ok", "error", "got", "expected",
+]
+
+
+def append_failures(csv_path: Path, summary: dict[str, Any]) -> None:
+    """Append one row per failed question to a shared failures CSV."""
+    failures = [r for r in summary.get("records", []) if not r.get("correct")]
+    if not failures:
+        return
+    new_file = not csv_path.exists()
+    with open(csv_path, "a", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=_FAILURES_COLS, extrasaction="ignore")
+        if new_file:
+            w.writeheader()
+        for r in failures:
+            row = {
+                "exp_id": summary.get("exp_id", ""),
+                "model": summary.get("model", ""),
+                "prompt_variant": summary.get("prompt_variant", ""),
+                "use_routing": summary.get("use_routing", ""),
+                **r,
+            }
+            w.writerow(row)
 
 
 def append_leaderboard(csv_path: Path, summary: dict[str, Any], tag: str) -> None:
@@ -341,9 +397,13 @@ def main():
             with open(out_path, "w") as f:
                 json.dump(summary, f, indent=2, default=str)
             append_leaderboard(leaderboard, summary, cfg.tag)
+            append_failures(out_dir / "failures.csv", summary)
+            n_fail = sum(1 for r in summary.get("records", []) if not r.get("correct"))
             print(f"    -> {summary['N_correct']}/{summary['n_items']} "
                   f"(acc={summary['accuracy']:.1%}, T={summary['T_total_seconds']:.1f}s, "
                   f"VRAM={summary['VRAM_GB']:.1f}GB, score={summary['score']:.4f})")
+            if n_fail:
+                print(f"    failures: {n_fail} (see failures.csv)")
 
         del engine
         gc.collect()

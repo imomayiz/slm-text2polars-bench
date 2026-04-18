@@ -5,7 +5,7 @@ Each PromptVariant is a (system_prompt, few_shot) pair with a unique name.
 `inference.py` looks up the variant by name via `PROMPT_VARIANTS[name]`.
 
 To add a new variant, append to PROMPT_VARIANTS below and reference it from
-`run_experiments.py` or the --prompt CLI flag.
+run.py or the --prompt CLI flag.
 """
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ class PromptVariant:
     description: str = ""
 
 
-# ---------- baseline: current production prompt ----------
+# ---------- System prompts ----------
 
 _BASELINE_SYSTEM = """You are an expert Python programmer specializing in the Polars DataFrame library.
 
@@ -44,12 +44,27 @@ use the string values exactly as they would appear in the data based on the ques
 9. For computed columns, use .with_columns() before .group_by().
 """
 
+_TERSE_SYSTEM = """Write Polars (eager DataFrame) code that answers the question.
+Rules:
+- Output ONLY code. No prose, no markdown.
+- Assign the answer to `result`.
+- Use `pl` and the DataFrame names from the schema. No imports. No .lazy()/.collect()/pandas.
+- Use .item() only for single-scalar answers.
+"""
+
+
+# ---------- Few-shot examples ----------
+# Each example teaches one distinct Polars API pattern.
+# Ordered from simple to complex. Keep each code snippet on one logical line.
+
 _BASELINE_FEW_SHOT = [
+    # 1. Filter + scalar with .item()
     {
         "schema": {"df": {"name": "Utf8", "department": "Utf8", "salary": "Float64"}},
         "question": "What is the average salary in the Eng department?",
         "code": 'result = df.filter(pl.col("department") == "Eng").select(pl.col("salary").mean()).item()',
     },
+    # 2. Group-by + single agg (returns DataFrame, no .item())
     {
         "schema": {"df": {"name": "Utf8", "department": "Utf8", "salary": "Float64"}},
         "question": "Average salary per department.",
@@ -59,6 +74,7 @@ _BASELINE_FEW_SHOT = [
             '.sort("department")'
         ),
     },
+    # 3. Computed column with .with_columns() before group_by
     {
         "schema": {"df": {"product": "Utf8", "region": "Utf8", "quantity": "Int64", "price": "Float64"}},
         "question": "Total revenue per region, where revenue = quantity * price.",
@@ -69,6 +85,7 @@ _BASELINE_FEW_SHOT = [
             '.sort("region"))'
         ),
     },
+    # 4. Inner join + sort + head + .item()
     {
         "schema": {
             "orders": {"order_id": "Int64", "customer_id": "Int64", "amount": "Float64"},
@@ -81,63 +98,88 @@ _BASELINE_FEW_SHOT = [
             '.select("name").head(1).item())'
         ),
     },
+    # 5. Anti-join ("who never ...")
     {
-        "schema": {"df": {"user_id": "Int64", "event": "Utf8", "ts": "Datetime"}},
-        "question": "Number of distinct users who had a 'purchase' event.",
-        "code": 'result = df.filter(pl.col("event") == "purchase").select(pl.col("user_id").n_unique()).item()',
+        "schema": {
+            "customers": {"customer_id": "Int64", "name": "Utf8"},
+            "orders": {"order_id": "Int64", "customer_id": "Int64", "amount": "Float64"},
+        },
+        "question": "Names of customers who never placed an order.",
+        "code": (
+            'result = customers.join(orders, on="customer_id", how="anti")'
+            '.select("name")'
+        ),
+    },
+    # 6. String .str namespace
+    {
+        "schema": {"df": {"city": "Utf8", "population": "Int64"}},
+        "question": "Cities whose name starts with 'San'.",
+        "code": 'result = df.filter(pl.col("city").str.starts_with("San"))',
+    },
+    # 7. Date .dt namespace
+    {
+        "schema": {"df": {"event": "Utf8", "ts": "Datetime", "value": "Float64"}},
+        "question": "Total value per year.",
+        "code": (
+            'result = (df.with_columns(pl.col("ts").dt.year().alias("year"))'
+            '.group_by("year")'
+            '.agg(pl.col("value").sum().alias("total"))'
+            '.sort("year"))'
+        ),
+    },
+    # 8. Conditional with pl.when / .then / .otherwise
+    {
+        "schema": {"df": {"name": "Utf8", "score": "Float64"}},
+        "question": "Add a 'grade' column: 'pass' if score >= 60, else 'fail'.",
+        "code": (
+            'result = df.with_columns('
+            'pl.when(pl.col("score") >= 60).then(pl.lit("pass"))'
+            '.otherwise(pl.lit("fail")).alias("grade"))'
+        ),
+    },
+    # 9. Window function with .over()
+    {
+        "schema": {"df": {"department": "Utf8", "name": "Utf8", "salary": "Float64"}},
+        "question": "Rank each employee by salary within their department (highest first).",
+        "code": (
+            'result = df.with_columns('
+            'pl.col("salary").rank(descending=True).over("department").alias("rank"))'
+        ),
+    },
+    # 10. Group-by with multiple aggregations (list syntax)
+    {
+        "schema": {"df": {"category": "Utf8", "price": "Float64", "quantity": "Int64"}},
+        "question": "For each category, show the average price and total quantity.",
+        "code": (
+            'result = df.group_by("category").agg(['
+            'pl.col("price").mean().alias("avg_price"), '
+            'pl.col("quantity").sum().alias("total_qty")'
+            ']).sort("category")'
+        ),
     },
 ]
 
 
-# ---------- terse: minimal system prompt, same few-shot ----------
-
-_TERSE_SYSTEM = """Write Polars (eager DataFrame) code that answers the question.
-Rules:
-- Output ONLY code. No prose, no markdown.
-- Assign the answer to `result`.
-- Use `pl` and the DataFrame names from the schema. No imports. No .lazy()/.collect()/pandas.
-- Use .item() only for single-scalar answers.
-"""
-
-
-# ---------- no_fewshot: system-only, useful as an ablation ----------
-
-_NO_FEWSHOT_SYSTEM = _BASELINE_SYSTEM
-
-
-# ---------- strict_columns: extra emphasis on literal column names ----------
-
-_STRICT_COLUMNS_SYSTEM = _BASELINE_SYSTEM + """
-10. Every column referenced via pl.col("...") must appear verbatim in the schema. \
-Do not invent columns and do not rename them.
-11. When joining, always pass on="<key>" explicitly; do not rely on implicit join keys.
-"""
-
+# ---------- Variants ----------
 
 PROMPT_VARIANTS: dict[str, PromptVariant] = {
     "baseline": PromptVariant(
         name="baseline",
         system_prompt=_BASELINE_SYSTEM,
         few_shot=_BASELINE_FEW_SHOT,
-        description="Production prompt (9 rules + 5 few-shot).",
+        description="Production prompt (9 rules + 10 few-shot).",
     ),
     "terse": PromptVariant(
         name="terse",
         system_prompt=_TERSE_SYSTEM,
         few_shot=_BASELINE_FEW_SHOT,
-        description="Minimal 5-bullet system prompt + same few-shot.",
+        description="Minimal system prompt + same few-shot.",
     ),
     "no_fewshot": PromptVariant(
         name="no_fewshot",
-        system_prompt=_NO_FEWSHOT_SYSTEM,
+        system_prompt=_BASELINE_SYSTEM,
         few_shot=[],
         description="Baseline system prompt with zero few-shot examples (ablation).",
-    ),
-    "strict_columns": PromptVariant(
-        name="strict_columns",
-        system_prompt=_STRICT_COLUMNS_SYSTEM,
-        few_shot=_BASELINE_FEW_SHOT,
-        description="Baseline + extra rules on literal column names and join keys.",
     ),
 }
 
