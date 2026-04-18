@@ -98,6 +98,10 @@ def format_schema(schema: dict[str, dict[str, str]]) -> str:
     )
 
 
+# Import routing from generator (single source of truth)
+from generator import API_SNIPPETS, classify_question
+
+
 def build_messages(
     question: str,
     schema: dict[str, dict[str, str]],
@@ -112,7 +116,13 @@ def build_messages(
         })
         msgs.append({"role": "assistant", "content": ex["code"]})
 
+    # Inject targeted API snippets based on question type
+    categories = classify_question(question, schema)
+    snippets = "\n".join(API_SNIPPETS[cat] for cat in categories if cat in API_SNIPPETS)
+
     user_msg = f"Schema:\n{format_schema(schema)}\n\nQuestion: {question}"
+    if snippets:
+        user_msg += f"\n\nRelevant Polars API reference:\n{snippets}"
     if prior_error is not None:
         user_msg += (
             f"\n\nYour previous attempt raised an error. Fix it.\n"
@@ -130,6 +140,10 @@ def clean_code(raw: str) -> str:
         if lines and lines[-1].strip().startswith("```"):
             lines = lines[:-1]
         s = "\n".join(lines).strip()
+    # Strip chat template stop tokens that leak into output
+    for tok in ("<|im_end|>", "<|im_start|>", "<|endoftext|>", "</s>"):
+        s = s.replace(tok, "")
+    s = s.strip()
     for prefix in ("Here is the code:", "Here's the code:", "Answer:", "Code:"):
         if s.lower().startswith(prefix.lower()):
             s = s[len(prefix):].lstrip("\n ").strip()

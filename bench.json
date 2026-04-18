@@ -1,0 +1,2128 @@
+[
+  {
+    "id": "q001",
+    "question": "How many employees are in the Engineering department?",
+    "category": "filter",
+    "difficulty": "easy",
+    "schema": {
+      "df": {
+        "id": "Int64",
+        "name": "String",
+        "department": "String",
+        "salary": "Float64",
+        "hire_year": "Int64"
+      }
+    },
+    "data": {
+      "df": [
+        {
+          "id": 1,
+          "name": "Alice",
+          "department": "Eng",
+          "salary": 120000.0,
+          "hire_year": 2019
+        },
+        {
+          "id": 2,
+          "name": "Bob",
+          "department": "Eng",
+          "salary": 95000.0,
+          "hire_year": 2021
+        },
+        {
+          "id": 3,
+          "name": "Carol",
+          "department": "Sales",
+          "salary": 85000.0,
+          "hire_year": 2020
+        },
+        {
+          "id": 4,
+          "name": "Dan",
+          "department": "Sales",
+          "salary": 110000.0,
+          "hire_year": 2018
+        },
+        {
+          "id": 5,
+          "name": "Eve",
+          "department": "Eng",
+          "salary": 140000.0,
+          "hire_year": 2022
+        },
+        {
+          "id": 6,
+          "name": "Frank",
+          "department": "Ops",
+          "salary": 75000.0,
+          "hire_year": 2023
+        },
+        {
+          "id": 7,
+          "name": "Grace",
+          "department": "Ops",
+          "salary": 80000.0,
+          "hire_year": 2020
+        },
+        {
+          "id": 8,
+          "name": "Heidi",
+          "department": "Sales",
+          "salary": 92000.0,
+          "hire_year": 2021
+        }
+      ]
+    },
+    "reference_code": "result = df.filter(pl.col(\"department\") == \"Eng\").height",
+    "expected_output": {
+      "kind": "scalar",
+      "value": 3
+    },
+    "tolerance": {
+      "order_matters": false,
+      "float_atol": 1e-06
+    }
+  },
+  {
+    "id": "q002",
+    "question": "List the names of employees with salary above 100000.",
+    "category": "filter",
+    "difficulty": "easy",
+    "schema": {
+      "df": {
+        "id": "Int64",
+        "name": "String",
+        "department": "String",
+        "salary": "Float64",
+        "hire_year": "Int64"
+      }
+    },
+    "data": {
+      "df": [
+        {
+          "id": 1,
+          "name": "Alice",
+          "department": "Eng",
+          "salary": 120000.0,
+          "hire_year": 2019
+        },
+        {
+          "id": 2,
+          "name": "Bob",
+          "department": "Eng",
+          "salary": 95000.0,
+          "hire_year": 2021
+        },
+        {
+          "id": 3,
+          "name": "Carol",
+          "department": "Sales",
+          "salary": 85000.0,
+          "hire_year": 2020
+        },
+        {
+          "id": 4,
+          "name": "Dan",
+          "department": "Sales",
+          "salary": 110000.0,
+          "hire_year": 2018
+        },
+        {
+          "id": 5,
+          "name": "Eve",
+          "department": "Eng",
+          "salary": 140000.0,
+          "hire_year": 2022
+        },
+        {
+          "id": 6,
+          "name": "Frank",
+          "department": "Ops",
+          "salary": 75000.0,
+          "hire_year": 2023
+        },
+        {
+          "id": 7,
+          "name": "Grace",
+          "department": "Ops",
+          "salary": 80000.0,
+          "hire_year": 2020
+        },
+        {
+          "id": 8,
+          "name": "Heidi",
+          "department": "Sales",
+          "salary": 92000.0,
+          "hire_year": 2021
+        }
+      ]
+    },
+    "reference_code": "result = df.filter(pl.col(\"salary\") > 100000).select(\"name\")",
+    "expected_output": {
+      "kind": "dataframe",
+      "value": [
+        {
+          "name": "Alice"
+        },
+        {
+          "name": "Dan"
+        },
+        {
+          "name": "Eve"
+        }
+      ],
+      "columns": [
+        "name"
+      ]
+    },
+    "tolerance": {
+      "order_matters": false,
+      "float_atol": 1e-06
+    }
+  },
+  {
+    "id": "q003",
+    "question": "What is the average salary across all employees?",
+    "category": "agg",
+    "difficulty": "easy",
+    "schema": {
+      "df": {
+        "id": "Int64",
+        "name": "String",
+        "department": "String",
+        "salary": "Float64",
+        "hire_year": "Int64"
+      }
+    },
+    "data": {
+      "df": [
+        {
+          "id": 1,
+          "name": "Alice",
+          "department": "Eng",
+          "salary": 120000.0,
+          "hire_year": 2019
+        },
+        {
+          "id": 2,
+          "name": "Bob",
+          "department": "Eng",
+          "salary": 95000.0,
+          "hire_year": 2021
+        },
+        {
+          "id": 3,
+          "name": "Carol",
+          "department": "Sales",
+          "salary": 85000.0,
+          "hire_year": 2020
+        },
+        {
+          "id": 4,
+          "name": "Dan",
+          "department": "Sales",
+          "salary": 110000.0,
+          "hire_year": 2018
+        },
+        {
+          "id": 5,
+          "name": "Eve",
+          "department": "Eng",
+          "salary": 140000.0,
+          "hire_year": 2022
+        },
+        {
+          "id": 6,
+          "name": "Frank",
+          "department": "Ops",
+          "salary": 75000.0,
+          "hire_year": 2023
+        },
+        {
+          "id": 7,
+          "name": "Grace",
+          "department": "Ops",
+          "salary": 80000.0,
+          "hire_year": 2020
+        },
+        {
+          "id": 8,
+          "name": "Heidi",
+          "department": "Sales",
+          "salary": 92000.0,
+          "hire_year": 2021
+        }
+      ]
+    },
+    "reference_code": "result = df.select(pl.col(\"salary\").mean()).item()",
+    "expected_output": {
+      "kind": "scalar",
+      "value": 99625.0
+    },
+    "tolerance": {
+      "order_matters": false,
+      "float_atol": 1e-06
+    }
+  },
+  {
+    "id": "q004",
+    "question": "What is the maximum salary in the Sales department?",
+    "category": "agg",
+    "difficulty": "easy",
+    "schema": {
+      "df": {
+        "id": "Int64",
+        "name": "String",
+        "department": "String",
+        "salary": "Float64",
+        "hire_year": "Int64"
+      }
+    },
+    "data": {
+      "df": [
+        {
+          "id": 1,
+          "name": "Alice",
+          "department": "Eng",
+          "salary": 120000.0,
+          "hire_year": 2019
+        },
+        {
+          "id": 2,
+          "name": "Bob",
+          "department": "Eng",
+          "salary": 95000.0,
+          "hire_year": 2021
+        },
+        {
+          "id": 3,
+          "name": "Carol",
+          "department": "Sales",
+          "salary": 85000.0,
+          "hire_year": 2020
+        },
+        {
+          "id": 4,
+          "name": "Dan",
+          "department": "Sales",
+          "salary": 110000.0,
+          "hire_year": 2018
+        },
+        {
+          "id": 5,
+          "name": "Eve",
+          "department": "Eng",
+          "salary": 140000.0,
+          "hire_year": 2022
+        },
+        {
+          "id": 6,
+          "name": "Frank",
+          "department": "Ops",
+          "salary": 75000.0,
+          "hire_year": 2023
+        },
+        {
+          "id": 7,
+          "name": "Grace",
+          "department": "Ops",
+          "salary": 80000.0,
+          "hire_year": 2020
+        },
+        {
+          "id": 8,
+          "name": "Heidi",
+          "department": "Sales",
+          "salary": 92000.0,
+          "hire_year": 2021
+        }
+      ]
+    },
+    "reference_code": "result = df.filter(pl.col(\"department\") == \"Sales\").select(pl.col(\"salary\").max()).item()",
+    "expected_output": {
+      "kind": "scalar",
+      "value": 110000.0
+    },
+    "tolerance": {
+      "order_matters": false,
+      "float_atol": 1e-06
+    }
+  },
+  {
+    "id": "q005",
+    "question": "Average salary per department.",
+    "category": "groupby",
+    "difficulty": "medium",
+    "schema": {
+      "df": {
+        "id": "Int64",
+        "name": "String",
+        "department": "String",
+        "salary": "Float64",
+        "hire_year": "Int64"
+      }
+    },
+    "data": {
+      "df": [
+        {
+          "id": 1,
+          "name": "Alice",
+          "department": "Eng",
+          "salary": 120000.0,
+          "hire_year": 2019
+        },
+        {
+          "id": 2,
+          "name": "Bob",
+          "department": "Eng",
+          "salary": 95000.0,
+          "hire_year": 2021
+        },
+        {
+          "id": 3,
+          "name": "Carol",
+          "department": "Sales",
+          "salary": 85000.0,
+          "hire_year": 2020
+        },
+        {
+          "id": 4,
+          "name": "Dan",
+          "department": "Sales",
+          "salary": 110000.0,
+          "hire_year": 2018
+        },
+        {
+          "id": 5,
+          "name": "Eve",
+          "department": "Eng",
+          "salary": 140000.0,
+          "hire_year": 2022
+        },
+        {
+          "id": 6,
+          "name": "Frank",
+          "department": "Ops",
+          "salary": 75000.0,
+          "hire_year": 2023
+        },
+        {
+          "id": 7,
+          "name": "Grace",
+          "department": "Ops",
+          "salary": 80000.0,
+          "hire_year": 2020
+        },
+        {
+          "id": 8,
+          "name": "Heidi",
+          "department": "Sales",
+          "salary": 92000.0,
+          "hire_year": 2021
+        }
+      ]
+    },
+    "reference_code": "result = df.group_by(\"department\").agg(pl.col(\"salary\").mean().alias(\"avg_salary\")).sort(\"department\")",
+    "expected_output": {
+      "kind": "dataframe",
+      "value": [
+        {
+          "department": "Eng",
+          "avg_salary": 118333.33333333333
+        },
+        {
+          "department": "Ops",
+          "avg_salary": 77500.0
+        },
+        {
+          "department": "Sales",
+          "avg_salary": 95666.66666666667
+        }
+      ],
+      "columns": [
+        "department",
+        "avg_salary"
+      ]
+    },
+    "tolerance": {
+      "order_matters": false,
+      "float_atol": 1e-06
+    }
+  },
+  {
+    "id": "q006",
+    "question": "Total revenue per region, where revenue = quantity * price.",
+    "category": "groupby",
+    "difficulty": "medium",
+    "schema": {
+      "df": {
+        "order_id": "Int64",
+        "product": "String",
+        "region": "String",
+        "quantity": "Int64",
+        "price": "Float64"
+      }
+    },
+    "data": {
+      "df": [
+        {
+          "order_id": 1,
+          "product": "A",
+          "region": "NA",
+          "quantity": 10,
+          "price": 9.99
+        },
+        {
+          "order_id": 2,
+          "product": "B",
+          "region": "EU",
+          "quantity": 5,
+          "price": 19.99
+        },
+        {
+          "order_id": 3,
+          "product": "A",
+          "region": "EU",
+          "quantity": 7,
+          "price": 9.99
+        },
+        {
+          "order_id": 4,
+          "product": "C",
+          "region": "NA",
+          "quantity": 3,
+          "price": 29.99
+        },
+        {
+          "order_id": 5,
+          "product": "B",
+          "region": "APAC",
+          "quantity": 12,
+          "price": 19.99
+        },
+        {
+          "order_id": 6,
+          "product": "A",
+          "region": "NA",
+          "quantity": 8,
+          "price": 9.99
+        },
+        {
+          "order_id": 7,
+          "product": "C",
+          "region": "EU",
+          "quantity": 4,
+          "price": 29.99
+        },
+        {
+          "order_id": 8,
+          "product": "C",
+          "region": "APAC",
+          "quantity": 6,
+          "price": 29.99
+        },
+        {
+          "order_id": 9,
+          "product": "B",
+          "region": "NA",
+          "quantity": 9,
+          "price": 19.99
+        },
+        {
+          "order_id": 10,
+          "product": "A",
+          "region": "APAC",
+          "quantity": 11,
+          "price": 9.99
+        }
+      ]
+    },
+    "reference_code": "result = (df.with_columns((pl.col(\"quantity\") * pl.col(\"price\")).alias(\"revenue\")).group_by(\"region\").agg(pl.col(\"revenue\").sum()).sort(\"region\"))",
+    "expected_output": {
+      "kind": "dataframe",
+      "value": [
+        {
+          "region": "APAC",
+          "revenue": 529.71
+        },
+        {
+          "region": "EU",
+          "revenue": 289.84
+        },
+        {
+          "region": "NA",
+          "revenue": 449.7
+        }
+      ],
+      "columns": [
+        "region",
+        "revenue"
+      ]
+    },
+    "tolerance": {
+      "order_matters": false,
+      "float_atol": 1e-06
+    }
+  },
+  {
+    "id": "q007",
+    "question": "Top 3 highest-paid employees. Return name and salary, sorted by salary descending.",
+    "category": "sort_limit",
+    "difficulty": "medium",
+    "schema": {
+      "df": {
+        "id": "Int64",
+        "name": "String",
+        "department": "String",
+        "salary": "Float64",
+        "hire_year": "Int64"
+      }
+    },
+    "data": {
+      "df": [
+        {
+          "id": 1,
+          "name": "Alice",
+          "department": "Eng",
+          "salary": 120000.0,
+          "hire_year": 2019
+        },
+        {
+          "id": 2,
+          "name": "Bob",
+          "department": "Eng",
+          "salary": 95000.0,
+          "hire_year": 2021
+        },
+        {
+          "id": 3,
+          "name": "Carol",
+          "department": "Sales",
+          "salary": 85000.0,
+          "hire_year": 2020
+        },
+        {
+          "id": 4,
+          "name": "Dan",
+          "department": "Sales",
+          "salary": 110000.0,
+          "hire_year": 2018
+        },
+        {
+          "id": 5,
+          "name": "Eve",
+          "department": "Eng",
+          "salary": 140000.0,
+          "hire_year": 2022
+        },
+        {
+          "id": 6,
+          "name": "Frank",
+          "department": "Ops",
+          "salary": 75000.0,
+          "hire_year": 2023
+        },
+        {
+          "id": 7,
+          "name": "Grace",
+          "department": "Ops",
+          "salary": 80000.0,
+          "hire_year": 2020
+        },
+        {
+          "id": 8,
+          "name": "Heidi",
+          "department": "Sales",
+          "salary": 92000.0,
+          "hire_year": 2021
+        }
+      ]
+    },
+    "reference_code": "result = df.select([\"name\", \"salary\"]).sort(\"salary\", descending=True).head(3)",
+    "expected_output": {
+      "kind": "dataframe",
+      "value": [
+        {
+          "name": "Eve",
+          "salary": 140000.0
+        },
+        {
+          "name": "Alice",
+          "salary": 120000.0
+        },
+        {
+          "name": "Dan",
+          "salary": 110000.0
+        }
+      ],
+      "columns": [
+        "name",
+        "salary"
+      ]
+    },
+    "tolerance": {
+      "order_matters": true,
+      "float_atol": 1e-06
+    }
+  },
+  {
+    "id": "q008",
+    "question": "Total order amount per country.",
+    "category": "join",
+    "difficulty": "medium",
+    "schema": {
+      "orders": {
+        "order_id": "Int64",
+        "customer_id": "Int64",
+        "amount": "Float64"
+      },
+      "customers": {
+        "customer_id": "Int64",
+        "name": "String",
+        "country": "String"
+      }
+    },
+    "data": {
+      "orders": [
+        {
+          "order_id": 101,
+          "customer_id": 1,
+          "amount": 500.0
+        },
+        {
+          "order_id": 102,
+          "customer_id": 1,
+          "amount": 1500.0
+        },
+        {
+          "order_id": 103,
+          "customer_id": 2,
+          "amount": 200.0
+        },
+        {
+          "order_id": 104,
+          "customer_id": 3,
+          "amount": 800.0
+        },
+        {
+          "order_id": 105,
+          "customer_id": 4,
+          "amount": 2200.0
+        },
+        {
+          "order_id": 106,
+          "customer_id": 5,
+          "amount": 1100.0
+        },
+        {
+          "order_id": 107,
+          "customer_id": 2,
+          "amount": 300.0
+        }
+      ],
+      "customers": [
+        {
+          "customer_id": 1,
+          "name": "Acme",
+          "country": "US"
+        },
+        {
+          "customer_id": 2,
+          "name": "Globex",
+          "country": "US"
+        },
+        {
+          "customer_id": 3,
+          "name": "Initech",
+          "country": "UK"
+        },
+        {
+          "customer_id": 4,
+          "name": "Umbrella",
+          "country": "DE"
+        },
+        {
+          "customer_id": 5,
+          "name": "Stark",
+          "country": "US"
+        },
+        {
+          "customer_id": 6,
+          "name": "Wayne",
+          "country": "US"
+        }
+      ]
+    },
+    "reference_code": "result = (orders.join(customers, on=\"customer_id\").group_by(\"country\").agg(pl.col(\"amount\").sum().alias(\"total\")).sort(\"country\"))",
+    "expected_output": {
+      "kind": "dataframe",
+      "value": [
+        {
+          "country": "DE",
+          "total": 2200.0
+        },
+        {
+          "country": "UK",
+          "total": 800.0
+        },
+        {
+          "country": "US",
+          "total": 3600.0
+        }
+      ],
+      "columns": [
+        "country",
+        "total"
+      ]
+    },
+    "tolerance": {
+      "order_matters": false,
+      "float_atol": 1e-06
+    }
+  },
+  {
+    "id": "q009",
+    "question": "Name of the customer with the largest single order.",
+    "category": "join",
+    "difficulty": "hard",
+    "schema": {
+      "orders": {
+        "order_id": "Int64",
+        "customer_id": "Int64",
+        "amount": "Float64"
+      },
+      "customers": {
+        "customer_id": "Int64",
+        "name": "String",
+        "country": "String"
+      }
+    },
+    "data": {
+      "orders": [
+        {
+          "order_id": 101,
+          "customer_id": 1,
+          "amount": 500.0
+        },
+        {
+          "order_id": 102,
+          "customer_id": 1,
+          "amount": 1500.0
+        },
+        {
+          "order_id": 103,
+          "customer_id": 2,
+          "amount": 200.0
+        },
+        {
+          "order_id": 104,
+          "customer_id": 3,
+          "amount": 800.0
+        },
+        {
+          "order_id": 105,
+          "customer_id": 4,
+          "amount": 2200.0
+        },
+        {
+          "order_id": 106,
+          "customer_id": 5,
+          "amount": 1100.0
+        },
+        {
+          "order_id": 107,
+          "customer_id": 2,
+          "amount": 300.0
+        }
+      ],
+      "customers": [
+        {
+          "customer_id": 1,
+          "name": "Acme",
+          "country": "US"
+        },
+        {
+          "customer_id": 2,
+          "name": "Globex",
+          "country": "US"
+        },
+        {
+          "customer_id": 3,
+          "name": "Initech",
+          "country": "UK"
+        },
+        {
+          "customer_id": 4,
+          "name": "Umbrella",
+          "country": "DE"
+        },
+        {
+          "customer_id": 5,
+          "name": "Stark",
+          "country": "US"
+        },
+        {
+          "customer_id": 6,
+          "name": "Wayne",
+          "country": "US"
+        }
+      ]
+    },
+    "reference_code": "result = (orders.join(customers, on=\"customer_id\").sort(\"amount\", descending=True).select(\"name\").head(1).item())",
+    "expected_output": {
+      "kind": "scalar",
+      "value": "Umbrella"
+    },
+    "tolerance": {
+      "order_matters": false,
+      "float_atol": 1e-06
+    }
+  },
+  {
+    "id": "q010",
+    "question": "Number of distinct products sold in the EU region.",
+    "category": "filter_agg",
+    "difficulty": "medium",
+    "schema": {
+      "df": {
+        "order_id": "Int64",
+        "product": "String",
+        "region": "String",
+        "quantity": "Int64",
+        "price": "Float64"
+      }
+    },
+    "data": {
+      "df": [
+        {
+          "order_id": 1,
+          "product": "A",
+          "region": "NA",
+          "quantity": 10,
+          "price": 9.99
+        },
+        {
+          "order_id": 2,
+          "product": "B",
+          "region": "EU",
+          "quantity": 5,
+          "price": 19.99
+        },
+        {
+          "order_id": 3,
+          "product": "A",
+          "region": "EU",
+          "quantity": 7,
+          "price": 9.99
+        },
+        {
+          "order_id": 4,
+          "product": "C",
+          "region": "NA",
+          "quantity": 3,
+          "price": 29.99
+        },
+        {
+          "order_id": 5,
+          "product": "B",
+          "region": "APAC",
+          "quantity": 12,
+          "price": 19.99
+        },
+        {
+          "order_id": 6,
+          "product": "A",
+          "region": "NA",
+          "quantity": 8,
+          "price": 9.99
+        },
+        {
+          "order_id": 7,
+          "product": "C",
+          "region": "EU",
+          "quantity": 4,
+          "price": 29.99
+        },
+        {
+          "order_id": 8,
+          "product": "C",
+          "region": "APAC",
+          "quantity": 6,
+          "price": 29.99
+        },
+        {
+          "order_id": 9,
+          "product": "B",
+          "region": "NA",
+          "quantity": 9,
+          "price": 19.99
+        },
+        {
+          "order_id": 10,
+          "product": "A",
+          "region": "APAC",
+          "quantity": 11,
+          "price": 9.99
+        }
+      ]
+    },
+    "reference_code": "result = df.filter(pl.col(\"region\") == \"EU\").select(pl.col(\"product\").n_unique()).item()",
+    "expected_output": {
+      "kind": "scalar",
+      "value": 3
+    },
+    "tolerance": {
+      "order_matters": false,
+      "float_atol": 1e-06
+    }
+  },
+  {
+    "id": "q011",
+    "question": "Return only the name and department columns for all employees, sorted by name.",
+    "category": "select",
+    "difficulty": "easy",
+    "schema": {
+      "df": {
+        "id": "Int64",
+        "name": "String",
+        "department": "String",
+        "salary": "Float64",
+        "hire_year": "Int64"
+      }
+    },
+    "data": {
+      "df": [
+        {
+          "id": 1,
+          "name": "Alice",
+          "department": "Eng",
+          "salary": 120000.0,
+          "hire_year": 2019
+        },
+        {
+          "id": 2,
+          "name": "Bob",
+          "department": "Eng",
+          "salary": 95000.0,
+          "hire_year": 2021
+        },
+        {
+          "id": 3,
+          "name": "Carol",
+          "department": "Sales",
+          "salary": 85000.0,
+          "hire_year": 2020
+        },
+        {
+          "id": 4,
+          "name": "Dan",
+          "department": "Sales",
+          "salary": 110000.0,
+          "hire_year": 2018
+        },
+        {
+          "id": 5,
+          "name": "Eve",
+          "department": "Eng",
+          "salary": 140000.0,
+          "hire_year": 2022
+        },
+        {
+          "id": 6,
+          "name": "Frank",
+          "department": "Ops",
+          "salary": 75000.0,
+          "hire_year": 2023
+        },
+        {
+          "id": 7,
+          "name": "Grace",
+          "department": "Ops",
+          "salary": 80000.0,
+          "hire_year": 2020
+        },
+        {
+          "id": 8,
+          "name": "Heidi",
+          "department": "Sales",
+          "salary": 92000.0,
+          "hire_year": 2021
+        }
+      ]
+    },
+    "reference_code": "result = df.select([\"name\", \"department\"]).sort(\"name\")",
+    "expected_output": {
+      "kind": "dataframe",
+      "value": [
+        {
+          "name": "Alice",
+          "department": "Eng"
+        },
+        {
+          "name": "Bob",
+          "department": "Eng"
+        },
+        {
+          "name": "Carol",
+          "department": "Sales"
+        },
+        {
+          "name": "Dan",
+          "department": "Sales"
+        },
+        {
+          "name": "Eve",
+          "department": "Eng"
+        },
+        {
+          "name": "Frank",
+          "department": "Ops"
+        },
+        {
+          "name": "Grace",
+          "department": "Ops"
+        },
+        {
+          "name": "Heidi",
+          "department": "Sales"
+        }
+      ],
+      "columns": [
+        "name",
+        "department"
+      ]
+    },
+    "tolerance": {
+      "order_matters": true,
+      "float_atol": 1e-06
+    }
+  },
+  {
+    "id": "q012",
+    "question": "List the names of employees hired in 2020 or 2021 who work in Engineering or Sales, sorted alphabetically.",
+    "category": "filter",
+    "difficulty": "easy",
+    "schema": {
+      "df": {
+        "id": "Int64",
+        "name": "String",
+        "department": "String",
+        "salary": "Float64",
+        "hire_year": "Int64"
+      }
+    },
+    "data": {
+      "df": [
+        {
+          "id": 1,
+          "name": "Alice",
+          "department": "Eng",
+          "salary": 120000.0,
+          "hire_year": 2019
+        },
+        {
+          "id": 2,
+          "name": "Bob",
+          "department": "Eng",
+          "salary": 95000.0,
+          "hire_year": 2021
+        },
+        {
+          "id": 3,
+          "name": "Carol",
+          "department": "Sales",
+          "salary": 85000.0,
+          "hire_year": 2020
+        },
+        {
+          "id": 4,
+          "name": "Dan",
+          "department": "Sales",
+          "salary": 110000.0,
+          "hire_year": 2018
+        },
+        {
+          "id": 5,
+          "name": "Eve",
+          "department": "Eng",
+          "salary": 140000.0,
+          "hire_year": 2022
+        },
+        {
+          "id": 6,
+          "name": "Frank",
+          "department": "Ops",
+          "salary": 75000.0,
+          "hire_year": 2023
+        },
+        {
+          "id": 7,
+          "name": "Grace",
+          "department": "Ops",
+          "salary": 80000.0,
+          "hire_year": 2020
+        },
+        {
+          "id": 8,
+          "name": "Heidi",
+          "department": "Sales",
+          "salary": 92000.0,
+          "hire_year": 2021
+        }
+      ]
+    },
+    "reference_code": "result = (df.filter(pl.col(\"hire_year\").is_in([2020, 2021]) & pl.col(\"department\").is_in([\"Eng\", \"Sales\"])).select(\"name\").sort(\"name\"))",
+    "expected_output": {
+      "kind": "dataframe",
+      "value": [
+        {
+          "name": "Bob"
+        },
+        {
+          "name": "Carol"
+        },
+        {
+          "name": "Heidi"
+        }
+      ],
+      "columns": [
+        "name"
+      ]
+    },
+    "tolerance": {
+      "order_matters": true,
+      "float_atol": 1e-06
+    }
+  },
+  {
+    "id": "q013",
+    "question": "Return the names of employees whose name starts with the letter E or F, sorted alphabetically.",
+    "category": "string",
+    "difficulty": "medium",
+    "schema": {
+      "df": {
+        "id": "Int64",
+        "name": "String",
+        "department": "String",
+        "salary": "Float64",
+        "hire_year": "Int64"
+      }
+    },
+    "data": {
+      "df": [
+        {
+          "id": 1,
+          "name": "Alice",
+          "department": "Eng",
+          "salary": 120000.0,
+          "hire_year": 2019
+        },
+        {
+          "id": 2,
+          "name": "Bob",
+          "department": "Eng",
+          "salary": 95000.0,
+          "hire_year": 2021
+        },
+        {
+          "id": 3,
+          "name": "Carol",
+          "department": "Sales",
+          "salary": 85000.0,
+          "hire_year": 2020
+        },
+        {
+          "id": 4,
+          "name": "Dan",
+          "department": "Sales",
+          "salary": 110000.0,
+          "hire_year": 2018
+        },
+        {
+          "id": 5,
+          "name": "Eve",
+          "department": "Eng",
+          "salary": 140000.0,
+          "hire_year": 2022
+        },
+        {
+          "id": 6,
+          "name": "Frank",
+          "department": "Ops",
+          "salary": 75000.0,
+          "hire_year": 2023
+        },
+        {
+          "id": 7,
+          "name": "Grace",
+          "department": "Ops",
+          "salary": 80000.0,
+          "hire_year": 2020
+        },
+        {
+          "id": 8,
+          "name": "Heidi",
+          "department": "Sales",
+          "salary": 92000.0,
+          "hire_year": 2021
+        }
+      ]
+    },
+    "reference_code": "result = (df.filter(pl.col(\"name\").str.starts_with(\"E\") | pl.col(\"name\").str.starts_with(\"F\")).select(\"name\").sort(\"name\"))",
+    "expected_output": {
+      "kind": "dataframe",
+      "value": [
+        {
+          "name": "Eve"
+        },
+        {
+          "name": "Frank"
+        }
+      ],
+      "columns": [
+        "name"
+      ]
+    },
+    "tolerance": {
+      "order_matters": true,
+      "float_atol": 1e-06
+    }
+  },
+  {
+    "id": "q014",
+    "question": "For each department, return the headcount, min salary, max salary, and mean salary, sorted by department.",
+    "category": "groupby",
+    "difficulty": "medium",
+    "schema": {
+      "df": {
+        "id": "Int64",
+        "name": "String",
+        "department": "String",
+        "salary": "Float64",
+        "hire_year": "Int64"
+      }
+    },
+    "data": {
+      "df": [
+        {
+          "id": 1,
+          "name": "Alice",
+          "department": "Eng",
+          "salary": 120000.0,
+          "hire_year": 2019
+        },
+        {
+          "id": 2,
+          "name": "Bob",
+          "department": "Eng",
+          "salary": 95000.0,
+          "hire_year": 2021
+        },
+        {
+          "id": 3,
+          "name": "Carol",
+          "department": "Sales",
+          "salary": 85000.0,
+          "hire_year": 2020
+        },
+        {
+          "id": 4,
+          "name": "Dan",
+          "department": "Sales",
+          "salary": 110000.0,
+          "hire_year": 2018
+        },
+        {
+          "id": 5,
+          "name": "Eve",
+          "department": "Eng",
+          "salary": 140000.0,
+          "hire_year": 2022
+        },
+        {
+          "id": 6,
+          "name": "Frank",
+          "department": "Ops",
+          "salary": 75000.0,
+          "hire_year": 2023
+        },
+        {
+          "id": 7,
+          "name": "Grace",
+          "department": "Ops",
+          "salary": 80000.0,
+          "hire_year": 2020
+        },
+        {
+          "id": 8,
+          "name": "Heidi",
+          "department": "Sales",
+          "salary": 92000.0,
+          "hire_year": 2021
+        }
+      ]
+    },
+    "reference_code": "result = (df.group_by(\"department\").agg([pl.len().alias(\"headcount\"), pl.col(\"salary\").min().alias(\"min_salary\"), pl.col(\"salary\").max().alias(\"max_salary\"), pl.col(\"salary\").mean().alias(\"avg_salary\")]).sort(\"department\"))",
+    "expected_output": {
+      "kind": "dataframe",
+      "value": [
+        {
+          "department": "Eng",
+          "headcount": 3,
+          "min_salary": 95000.0,
+          "max_salary": 140000.0,
+          "avg_salary": 118333.33333333333
+        },
+        {
+          "department": "Ops",
+          "headcount": 2,
+          "min_salary": 75000.0,
+          "max_salary": 80000.0,
+          "avg_salary": 77500.0
+        },
+        {
+          "department": "Sales",
+          "headcount": 3,
+          "min_salary": 85000.0,
+          "max_salary": 110000.0,
+          "avg_salary": 95666.66666666667
+        }
+      ],
+      "columns": [
+        "department",
+        "headcount",
+        "min_salary",
+        "max_salary",
+        "avg_salary"
+      ]
+    },
+    "tolerance": {
+      "order_matters": false,
+      "float_atol": 1e-06
+    }
+  },
+  {
+    "id": "q015",
+    "question": "Which departments have more than 2 employees? Return department and headcount, sorted by department.",
+    "category": "groupby",
+    "difficulty": "medium",
+    "schema": {
+      "df": {
+        "id": "Int64",
+        "name": "String",
+        "department": "String",
+        "salary": "Float64",
+        "hire_year": "Int64"
+      }
+    },
+    "data": {
+      "df": [
+        {
+          "id": 1,
+          "name": "Alice",
+          "department": "Eng",
+          "salary": 120000.0,
+          "hire_year": 2019
+        },
+        {
+          "id": 2,
+          "name": "Bob",
+          "department": "Eng",
+          "salary": 95000.0,
+          "hire_year": 2021
+        },
+        {
+          "id": 3,
+          "name": "Carol",
+          "department": "Sales",
+          "salary": 85000.0,
+          "hire_year": 2020
+        },
+        {
+          "id": 4,
+          "name": "Dan",
+          "department": "Sales",
+          "salary": 110000.0,
+          "hire_year": 2018
+        },
+        {
+          "id": 5,
+          "name": "Eve",
+          "department": "Eng",
+          "salary": 140000.0,
+          "hire_year": 2022
+        },
+        {
+          "id": 6,
+          "name": "Frank",
+          "department": "Ops",
+          "salary": 75000.0,
+          "hire_year": 2023
+        },
+        {
+          "id": 7,
+          "name": "Grace",
+          "department": "Ops",
+          "salary": 80000.0,
+          "hire_year": 2020
+        },
+        {
+          "id": 8,
+          "name": "Heidi",
+          "department": "Sales",
+          "salary": 92000.0,
+          "hire_year": 2021
+        }
+      ]
+    },
+    "reference_code": "result = (df.group_by(\"department\").agg(pl.len().alias(\"headcount\")).filter(pl.col(\"headcount\") > 2).sort(\"department\"))",
+    "expected_output": {
+      "kind": "dataframe",
+      "value": [
+        {
+          "department": "Eng",
+          "headcount": 3
+        },
+        {
+          "department": "Sales",
+          "headcount": 3
+        }
+      ],
+      "columns": [
+        "department",
+        "headcount"
+      ]
+    },
+    "tolerance": {
+      "order_matters": false,
+      "float_atol": 1e-06
+    }
+  },
+  {
+    "id": "q016",
+    "question": "Rank employees by salary within each department (rank 1 = highest salary). Return name, department, salary, and rank, sorted by department then rank.",
+    "category": "window",
+    "difficulty": "hard",
+    "schema": {
+      "df": {
+        "id": "Int64",
+        "name": "String",
+        "department": "String",
+        "salary": "Float64",
+        "hire_year": "Int64"
+      }
+    },
+    "data": {
+      "df": [
+        {
+          "id": 1,
+          "name": "Alice",
+          "department": "Eng",
+          "salary": 120000.0,
+          "hire_year": 2019
+        },
+        {
+          "id": 2,
+          "name": "Bob",
+          "department": "Eng",
+          "salary": 95000.0,
+          "hire_year": 2021
+        },
+        {
+          "id": 3,
+          "name": "Carol",
+          "department": "Sales",
+          "salary": 85000.0,
+          "hire_year": 2020
+        },
+        {
+          "id": 4,
+          "name": "Dan",
+          "department": "Sales",
+          "salary": 110000.0,
+          "hire_year": 2018
+        },
+        {
+          "id": 5,
+          "name": "Eve",
+          "department": "Eng",
+          "salary": 140000.0,
+          "hire_year": 2022
+        },
+        {
+          "id": 6,
+          "name": "Frank",
+          "department": "Ops",
+          "salary": 75000.0,
+          "hire_year": 2023
+        },
+        {
+          "id": 7,
+          "name": "Grace",
+          "department": "Ops",
+          "salary": 80000.0,
+          "hire_year": 2020
+        },
+        {
+          "id": 8,
+          "name": "Heidi",
+          "department": "Sales",
+          "salary": 92000.0,
+          "hire_year": 2021
+        }
+      ]
+    },
+    "reference_code": "result = (df.with_columns(pl.col(\"salary\").rank(method=\"ordinal\", descending=True).over(\"department\").cast(pl.Int64).alias(\"rank\")).select([\"name\", \"department\", \"salary\", \"rank\"]).sort([\"department\", \"rank\"]))",
+    "expected_output": {
+      "kind": "dataframe",
+      "value": [
+        {
+          "name": "Eve",
+          "department": "Eng",
+          "salary": 140000.0,
+          "rank": 1
+        },
+        {
+          "name": "Alice",
+          "department": "Eng",
+          "salary": 120000.0,
+          "rank": 2
+        },
+        {
+          "name": "Bob",
+          "department": "Eng",
+          "salary": 95000.0,
+          "rank": 3
+        },
+        {
+          "name": "Grace",
+          "department": "Ops",
+          "salary": 80000.0,
+          "rank": 1
+        },
+        {
+          "name": "Frank",
+          "department": "Ops",
+          "salary": 75000.0,
+          "rank": 2
+        },
+        {
+          "name": "Dan",
+          "department": "Sales",
+          "salary": 110000.0,
+          "rank": 1
+        },
+        {
+          "name": "Heidi",
+          "department": "Sales",
+          "salary": 92000.0,
+          "rank": 2
+        },
+        {
+          "name": "Carol",
+          "department": "Sales",
+          "salary": 85000.0,
+          "rank": 3
+        }
+      ],
+      "columns": [
+        "name",
+        "department",
+        "salary",
+        "rank"
+      ]
+    },
+    "tolerance": {
+      "order_matters": true,
+      "float_atol": 1e-06
+    }
+  },
+  {
+    "id": "q017",
+    "question": "Return the names of customers who have not placed any orders, sorted alphabetically.",
+    "category": "join",
+    "difficulty": "medium",
+    "schema": {
+      "orders": {
+        "order_id": "Int64",
+        "customer_id": "Int64",
+        "amount": "Float64"
+      },
+      "customers": {
+        "customer_id": "Int64",
+        "name": "String",
+        "country": "String"
+      }
+    },
+    "data": {
+      "orders": [
+        {
+          "order_id": 101,
+          "customer_id": 1,
+          "amount": 500.0
+        },
+        {
+          "order_id": 102,
+          "customer_id": 1,
+          "amount": 1500.0
+        },
+        {
+          "order_id": 103,
+          "customer_id": 2,
+          "amount": 200.0
+        },
+        {
+          "order_id": 104,
+          "customer_id": 3,
+          "amount": 800.0
+        },
+        {
+          "order_id": 105,
+          "customer_id": 4,
+          "amount": 2200.0
+        },
+        {
+          "order_id": 106,
+          "customer_id": 5,
+          "amount": 1100.0
+        },
+        {
+          "order_id": 107,
+          "customer_id": 2,
+          "amount": 300.0
+        }
+      ],
+      "customers": [
+        {
+          "customer_id": 1,
+          "name": "Acme",
+          "country": "US"
+        },
+        {
+          "customer_id": 2,
+          "name": "Globex",
+          "country": "US"
+        },
+        {
+          "customer_id": 3,
+          "name": "Initech",
+          "country": "UK"
+        },
+        {
+          "customer_id": 4,
+          "name": "Umbrella",
+          "country": "DE"
+        },
+        {
+          "customer_id": 5,
+          "name": "Stark",
+          "country": "US"
+        },
+        {
+          "customer_id": 6,
+          "name": "Wayne",
+          "country": "US"
+        }
+      ]
+    },
+    "reference_code": "result = (customers.join(orders, on=\"customer_id\", how=\"anti\").select(\"name\").sort(\"name\"))",
+    "expected_output": {
+      "kind": "dataframe",
+      "value": [
+        {
+          "name": "Wayne"
+        }
+      ],
+      "columns": [
+        "name"
+      ]
+    },
+    "tolerance": {
+      "order_matters": true,
+      "float_atol": 1e-06
+    }
+  },
+  {
+    "id": "q018",
+    "question": "Total quantity sold per product category, sorted by category.",
+    "category": "join",
+    "difficulty": "medium",
+    "schema": {
+      "sales": {
+        "order_id": "Int64",
+        "product": "String",
+        "region": "String",
+        "quantity": "Int64",
+        "price": "Float64"
+      },
+      "products": {
+        "product": "String",
+        "category": "String",
+        "cost": "Float64"
+      }
+    },
+    "data": {
+      "sales": [
+        {
+          "order_id": 1,
+          "product": "A",
+          "region": "NA",
+          "quantity": 10,
+          "price": 9.99
+        },
+        {
+          "order_id": 2,
+          "product": "B",
+          "region": "EU",
+          "quantity": 5,
+          "price": 19.99
+        },
+        {
+          "order_id": 3,
+          "product": "A",
+          "region": "EU",
+          "quantity": 7,
+          "price": 9.99
+        },
+        {
+          "order_id": 4,
+          "product": "C",
+          "region": "NA",
+          "quantity": 3,
+          "price": 29.99
+        },
+        {
+          "order_id": 5,
+          "product": "B",
+          "region": "APAC",
+          "quantity": 12,
+          "price": 19.99
+        },
+        {
+          "order_id": 6,
+          "product": "A",
+          "region": "NA",
+          "quantity": 8,
+          "price": 9.99
+        },
+        {
+          "order_id": 7,
+          "product": "C",
+          "region": "EU",
+          "quantity": 4,
+          "price": 29.99
+        },
+        {
+          "order_id": 8,
+          "product": "C",
+          "region": "APAC",
+          "quantity": 6,
+          "price": 29.99
+        },
+        {
+          "order_id": 9,
+          "product": "B",
+          "region": "NA",
+          "quantity": 9,
+          "price": 19.99
+        },
+        {
+          "order_id": 10,
+          "product": "A",
+          "region": "APAC",
+          "quantity": 11,
+          "price": 9.99
+        }
+      ],
+      "products": [
+        {
+          "product": "A",
+          "category": "Hardware",
+          "cost": 4.0
+        },
+        {
+          "product": "B",
+          "category": "Software",
+          "cost": 10.0
+        },
+        {
+          "product": "C",
+          "category": "Hardware",
+          "cost": 15.0
+        },
+        {
+          "product": "D",
+          "category": "Services",
+          "cost": 20.0
+        }
+      ]
+    },
+    "reference_code": "result = (sales.join(products, on=\"product\").group_by(\"category\").agg(pl.col(\"quantity\").sum().alias(\"total_quantity\")).sort(\"category\"))",
+    "expected_output": {
+      "kind": "dataframe",
+      "value": [
+        {
+          "category": "Hardware",
+          "total_quantity": 49
+        },
+        {
+          "category": "Software",
+          "total_quantity": 26
+        }
+      ],
+      "columns": [
+        "category",
+        "total_quantity"
+      ]
+    },
+    "tolerance": {
+      "order_matters": false,
+      "float_atol": 1e-06
+    }
+  },
+  {
+    "id": "q019",
+    "question": "For each region, compute its revenue (quantity * price) as a percentage of total revenue. Return region and pct, sorted by pct descending.",
+    "category": "window",
+    "difficulty": "hard",
+    "schema": {
+      "df": {
+        "order_id": "Int64",
+        "product": "String",
+        "region": "String",
+        "quantity": "Int64",
+        "price": "Float64"
+      }
+    },
+    "data": {
+      "df": [
+        {
+          "order_id": 1,
+          "product": "A",
+          "region": "NA",
+          "quantity": 10,
+          "price": 9.99
+        },
+        {
+          "order_id": 2,
+          "product": "B",
+          "region": "EU",
+          "quantity": 5,
+          "price": 19.99
+        },
+        {
+          "order_id": 3,
+          "product": "A",
+          "region": "EU",
+          "quantity": 7,
+          "price": 9.99
+        },
+        {
+          "order_id": 4,
+          "product": "C",
+          "region": "NA",
+          "quantity": 3,
+          "price": 29.99
+        },
+        {
+          "order_id": 5,
+          "product": "B",
+          "region": "APAC",
+          "quantity": 12,
+          "price": 19.99
+        },
+        {
+          "order_id": 6,
+          "product": "A",
+          "region": "NA",
+          "quantity": 8,
+          "price": 9.99
+        },
+        {
+          "order_id": 7,
+          "product": "C",
+          "region": "EU",
+          "quantity": 4,
+          "price": 29.99
+        },
+        {
+          "order_id": 8,
+          "product": "C",
+          "region": "APAC",
+          "quantity": 6,
+          "price": 29.99
+        },
+        {
+          "order_id": 9,
+          "product": "B",
+          "region": "NA",
+          "quantity": 9,
+          "price": 19.99
+        },
+        {
+          "order_id": 10,
+          "product": "A",
+          "region": "APAC",
+          "quantity": 11,
+          "price": 9.99
+        }
+      ]
+    },
+    "reference_code": "result = (df.with_columns((pl.col(\"quantity\") * pl.col(\"price\")).alias(\"rev\")).group_by(\"region\").agg(pl.col(\"rev\").sum()).with_columns((pl.col(\"rev\") / pl.col(\"rev\").sum() * 100).alias(\"pct\")).select([\"region\", \"pct\"]).sort(\"pct\", descending=True))",
+    "expected_output": {
+      "kind": "dataframe",
+      "value": [
+        {
+          "region": "APAC",
+          "pct": 41.73409493795548
+        },
+        {
+          "region": "NA",
+          "pct": 35.43037226708686
+        },
+        {
+          "region": "EU",
+          "pct": 22.83553279495765
+        }
+      ],
+      "columns": [
+        "region",
+        "pct"
+      ]
+    },
+    "tolerance": {
+      "order_matters": true,
+      "float_atol": 1e-06
+    }
+  },
+  {
+    "id": "q020",
+    "question": "Return name, department, and salary for all employees, sorted by department ascending and salary descending.",
+    "category": "sort",
+    "difficulty": "easy",
+    "schema": {
+      "df": {
+        "id": "Int64",
+        "name": "String",
+        "department": "String",
+        "salary": "Float64",
+        "hire_year": "Int64"
+      }
+    },
+    "data": {
+      "df": [
+        {
+          "id": 1,
+          "name": "Alice",
+          "department": "Eng",
+          "salary": 120000.0,
+          "hire_year": 2019
+        },
+        {
+          "id": 2,
+          "name": "Bob",
+          "department": "Eng",
+          "salary": 95000.0,
+          "hire_year": 2021
+        },
+        {
+          "id": 3,
+          "name": "Carol",
+          "department": "Sales",
+          "salary": 85000.0,
+          "hire_year": 2020
+        },
+        {
+          "id": 4,
+          "name": "Dan",
+          "department": "Sales",
+          "salary": 110000.0,
+          "hire_year": 2018
+        },
+        {
+          "id": 5,
+          "name": "Eve",
+          "department": "Eng",
+          "salary": 140000.0,
+          "hire_year": 2022
+        },
+        {
+          "id": 6,
+          "name": "Frank",
+          "department": "Ops",
+          "salary": 75000.0,
+          "hire_year": 2023
+        },
+        {
+          "id": 7,
+          "name": "Grace",
+          "department": "Ops",
+          "salary": 80000.0,
+          "hire_year": 2020
+        },
+        {
+          "id": 8,
+          "name": "Heidi",
+          "department": "Sales",
+          "salary": 92000.0,
+          "hire_year": 2021
+        }
+      ]
+    },
+    "reference_code": "result = (df.select([\"name\", \"department\", \"salary\"]).sort([\"department\", \"salary\"], descending=[False, True]))",
+    "expected_output": {
+      "kind": "dataframe",
+      "value": [
+        {
+          "name": "Eve",
+          "department": "Eng",
+          "salary": 140000.0
+        },
+        {
+          "name": "Alice",
+          "department": "Eng",
+          "salary": 120000.0
+        },
+        {
+          "name": "Bob",
+          "department": "Eng",
+          "salary": 95000.0
+        },
+        {
+          "name": "Grace",
+          "department": "Ops",
+          "salary": 80000.0
+        },
+        {
+          "name": "Frank",
+          "department": "Ops",
+          "salary": 75000.0
+        },
+        {
+          "name": "Dan",
+          "department": "Sales",
+          "salary": 110000.0
+        },
+        {
+          "name": "Heidi",
+          "department": "Sales",
+          "salary": 92000.0
+        },
+        {
+          "name": "Carol",
+          "department": "Sales",
+          "salary": 85000.0
+        }
+      ],
+      "columns": [
+        "name",
+        "department",
+        "salary"
+      ]
+    },
+    "tolerance": {
+      "order_matters": true,
+      "float_atol": 1e-06
+    }
+  }
+]
