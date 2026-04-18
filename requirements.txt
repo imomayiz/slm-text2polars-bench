@@ -1,0 +1,8 @@
+transformers
+accelerate
+polars
+torch
+fastapi
+uvicorn
+requests
+pydantic
