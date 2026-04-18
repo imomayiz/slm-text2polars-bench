@@ -190,27 +190,62 @@ class PolarsGenerator:
     def __init__(
         self,
         model: str = "mlx-community/Qwen2.5-Coder-1.5B-Instruct-4bit",
+        backend: str = "auto",
     ):
-        """Load the model once; reuse for all questions."""
-        from mlx_lm import load
-
-        self.model, self.tokenizer = load(model)
+        """
+        Load the model once; reuse for all questions.
+        backend: "auto" (detect from model name), "mlx", or "transformers".
+        """
         self.model_name = model
+
+        if backend == "auto":
+            backend = "mlx" if "mlx-community" in model else "transformers"
+        self.backend = backend
+
+        if backend == "mlx":
+            from mlx_lm import load
+            self.model, self.tokenizer = load(model)
+        else:
+            import torch
+            from transformers import AutoModelForCausalLM, AutoTokenizer
+            self.tokenizer = AutoTokenizer.from_pretrained(model)
+            self.model = AutoModelForCausalLM.from_pretrained(
+                model,
+                torch_dtype=torch.bfloat16,
+                device_map="auto",
+            )
+            self.model.eval()
 
     def _generate_one_prompt(
         self,
         prompt: str,
         max_tokens: int = 256,
     ) -> str:
-        from mlx_lm import generate as mlx_generate
-
-        return mlx_generate(
-            self.model,
-            self.tokenizer,
-            prompt=prompt,
-            max_tokens=max_tokens,
-            verbose=False,
-        )
+        if self.backend == "mlx":
+            from mlx_lm import generate as mlx_generate
+            return mlx_generate(
+                self.model,
+                self.tokenizer,
+                prompt=prompt,
+                max_tokens=max_tokens,
+                verbose=False,
+            )
+        else:
+            import torch
+            inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
+            with torch.inference_mode():
+                outputs = self.model.generate(
+                    **inputs,
+                    max_new_tokens=max_tokens,
+                    do_sample=False,
+                    pad_token_id=self.tokenizer.eos_token_id,
+                    eos_token_id=self.tokenizer.eos_token_id,
+                    use_cache=True,
+                )
+            return self.tokenizer.decode(
+                outputs[0][inputs["input_ids"].shape[1]:],
+                skip_special_tokens=True,
+            )
 
     def generate(
         self,
