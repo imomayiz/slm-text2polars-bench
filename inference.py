@@ -1,5 +1,5 @@
 """
-Hugging Face Transformers inference engine (CUDA/CPU).
+vLLM inference engine (CUDA).
 
 Used by main.py (FastAPI server) and run_bench_cuda.py (offline benchmark).
 
@@ -8,7 +8,7 @@ and API-snippet routing (classify_question) can be toggled off for ablations.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from prompt_routing import API_SNIPPETS, classify_question
@@ -107,14 +107,6 @@ def clean_code(raw: str) -> str:
 
 # ---------- Engine ----------
 
-def _torch_dtype_from_str(s: str):
-    import torch
-    if s == "auto":
-        return "auto"
-    return {"bfloat16": torch.bfloat16, "float16": torch.float16,
-            "float32": torch.float32}.get(s, torch.bfloat16)
-
-
 @dataclass
 class InferenceConfig:
     model: str = "Qwen/Qwen2.5-Coder-1.5B-Instruct"
@@ -125,6 +117,11 @@ class InferenceConfig:
     trust_remote_code: bool = True
     prompt_variant: str = "baseline"
     use_routing: bool = True
+    # vLLM-specific knobs
+    gpu_memory_utilization: float = 0.90
+    tensor_parallel_size: int = 1
+    enforce_eager: bool = False
+    extra_vllm_kwargs: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -135,36 +132,33 @@ class InferenceResult:
 
 
 class PolarsInferenceEngine:
-    """One-time HF model load; greedy generation via model.generate."""
+    """vLLM-backed engine; greedy generation via LLM.generate on rendered prompts."""
 
     def __init__(self, cfg: InferenceConfig):
-        import torch
-        from transformers import AutoModelForCausalLM, AutoTokenizer
+        from vllm import LLM
+        from transformers import AutoTokenizer
 
         self.cfg = cfg
         # Validate prompt variant early to fail fast.
         self.variant = get_variant(cfg.prompt_variant)
 
+        # Tokenizer is used only to render chat templates; vLLM owns its own copy
+        # internally for generation, so this is a cheap read-only instance.
         self.tokenizer = AutoTokenizer.from_pretrained(
-            cfg.model, trust_remote_code=cfg.trust_remote_code, 
+            cfg.model, trust_remote_code=cfg.trust_remote_code,
         )
-        if self.tokenizer.pad_token_id is None and self.tokenizer.eos_token is not None:
-            self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        td = _torch_dtype_from_str(cfg.dtype)
-        load_kw: dict[str, Any] = {"trust_remote_code": cfg.trust_remote_code}
-        if torch.cuda.is_available():
-            load_kw["device_map"] = "auto"
-            load_kw["torch_dtype"] = td if td != "auto" else "auto"
-        else:
-            load_kw["torch_dtype"] = torch.float32
-
-        self.model = AutoModelForCausalLM.from_pretrained(cfg.model, **load_kw)
-        self.model.eval()
-
-    @property
-    def device(self):
-        return next(self.model.parameters()).device
+        llm_kwargs: dict[str, Any] = {
+            "model": cfg.model,
+            "dtype": cfg.dtype,
+            "max_model_len": cfg.max_model_len,
+            "trust_remote_code": cfg.trust_remote_code,
+            "gpu_memory_utilization": cfg.gpu_memory_utilization,
+            "tensor_parallel_size": cfg.tensor_parallel_size,
+            "enforce_eager": cfg.enforce_eager,
+        }
+        llm_kwargs.update(cfg.extra_vllm_kwargs)
+        self.llm = LLM(**llm_kwargs)
 
     def set_prompt(self, prompt_variant: str | None = None, use_routing: bool | None = None) -> None:
         """Swap prompt variant / routing without reloading the model."""
@@ -174,6 +168,24 @@ class PolarsInferenceEngine:
         if use_routing is not None:
             self.cfg.use_routing = use_routing
 
+    def _render_prompt(self, msgs: list[dict]) -> str:
+        tok = self.tokenizer
+        if hasattr(tok, "apply_chat_template") and getattr(tok, "chat_template", None):
+            return tok.apply_chat_template(
+                msgs,
+                tokenize=False,
+                add_generation_prompt=True,
+                enable_thinking=False,
+            )
+        return "\n\n".join(f"### {m['role']}\n{m['content']}" for m in msgs) + "\n### assistant\n"
+
+    def _sampling_params(self, max_tokens: int, temperature: float):
+        from vllm import SamplingParams
+        if temperature and temperature > 1e-6:
+            return SamplingParams(temperature=temperature, max_tokens=max_tokens)
+        # Greedy decoding
+        return SamplingParams(temperature=0.0, top_p=1.0, max_tokens=max_tokens)
+
     def generate_one(
         self,
         question: str,
@@ -181,8 +193,6 @@ class PolarsInferenceEngine:
         max_tokens: int | None = None,
         temperature: float | None = None,
     ) -> InferenceResult:
-        import torch
-
         max_tokens = max_tokens or self.cfg.max_tokens
         temperature = self.cfg.temperature if temperature is None else temperature
 
@@ -191,31 +201,41 @@ class PolarsInferenceEngine:
             variant=self.variant,
             use_routing=self.cfg.use_routing,
         )
-        tok = self.tokenizer
-        if hasattr(tok, "apply_chat_template") and getattr(tok, "chat_template", None):
-            prompt = tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True, enable_thinking=False,)
-        else:
-            prompt = "\n\n".join(f"### {m['role']}\n{m['content']}" for m in msgs) + "\n### assistant\n"
+        prompt = self._render_prompt(msgs)
+        sp = self._sampling_params(max_tokens, temperature)
 
-        max_prompt_len = max(128, self.cfg.max_model_len - max_tokens)
-        enc = tok(prompt, return_tensors="pt", truncation=True, max_length=max_prompt_len)
-        enc = {k: v.to(self.device) for k, v in enc.items()}
+        outputs = self.llm.generate([prompt], sp, use_tqdm=False)
+        out = outputs[0].outputs[0]
+        text = out.text
+        n_tokens = len(out.token_ids) if getattr(out, "token_ids", None) is not None else 0
+        return InferenceResult(code=clean_code(text), raw=text, tokens=int(n_tokens))
 
-        gen_kw: dict[str, Any] = {
-            "max_new_tokens": max_tokens,
-            "pad_token_id": tok.pad_token_id,
-        }
-        if temperature and temperature > 1e-6:
-            gen_kw["do_sample"] = True
-            gen_kw["temperature"] = temperature
-        else:
-            gen_kw["do_sample"] = False
+    def generate_batch(
+        self,
+        items: list[tuple[str, dict[str, dict[str, str]]]],
+        max_tokens: int | None = None,
+        temperature: float | None = None,
+    ) -> list[InferenceResult]:
+        """Batched generation — the main reason to use vLLM.
 
-        with torch.inference_mode():
-            out_ids = self.model.generate(**enc, **gen_kw)
+        `items` is a list of (question, schema) tuples. Returns results in order.
+        """
+        max_tokens = max_tokens or self.cfg.max_tokens
+        temperature = self.cfg.temperature if temperature is None else temperature
 
-        in_len = enc["input_ids"].shape[1]
-        new_ids = out_ids[0, in_len:]
-        text = tok.decode(new_ids, skip_special_tokens=True)
+        prompts = [
+            self._render_prompt(
+                build_messages(q, s, variant=self.variant, use_routing=self.cfg.use_routing)
+            )
+            for q, s in items
+        ]
+        sp = self._sampling_params(max_tokens, temperature)
+        outputs = self.llm.generate(prompts, sp, use_tqdm=False)
 
-        return InferenceResult(code=clean_code(text), raw=text, tokens=int(new_ids.numel()))
+        results: list[InferenceResult] = []
+        for o in outputs:
+            out = o.outputs[0]
+            text = out.text
+            n_tokens = len(out.token_ids) if getattr(out, "token_ids", None) is not None else 0
+            results.append(InferenceResult(code=clean_code(text), raw=text, tokens=int(n_tokens)))
+        return results
