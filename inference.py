@@ -80,6 +80,28 @@ def clean_code(raw: str) -> str:
     s = re.sub(r'\.collect\(\)', '', s)
     s = re.sub(r'\.to_pandas\(\)[^\n]*', '', s)
     s = re.sub(r'\.to_numpy\(\)[^\n]*', '', s)
+    # Fix deprecated / pandas-style method names → modern Polars equivalents
+    s = s.replace('.groupby(', '.group_by(')
+    s = s.replace('.isin(', '.is_in(')
+    s = s.replace('.startswith(', '.starts_with(')
+    s = s.replace('.endswith(', '.ends_with(')
+    s = s.replace('.distinct()', '.unique()')
+    s = s.replace('.cumsum()', '.cum_sum()')
+    s = s.replace('.cummax()', '.cum_max()')
+    s = s.replace('.cummin()', '.cum_min()')
+    s = s.replace('.cumprod()', '.cum_prod()')
+    s = s.replace('.drop_duplicates(', '.unique(')
+    # Fix .sort(reverse=...) → .sort(descending=...)
+    s = re.sub(r'\.sort\(([^)]*)\breverse\b\s*=', r'.sort(\1descending=', s)
+    # Fix .sort(ascending=...) → .sort(descending=...) with inverted bool
+    s = re.sub(r'\.sort\(([^)]*)\bascending\b\s*=\s*True', r'.sort(\1descending=False', s)
+    s = re.sub(r'\.sort\(([^)]*)\bascending\b\s*=\s*False', r'.sort(\1descending=True', s)
+    s = re.sub(r'\.sort\(([^)]*)\bascending\b\s*=\s*\[', r'.sort(\1descending=[', s)
+    # Fix .then("string") → .then(pl.lit("string")) — bare strings in when/then
+    s = re.sub(r'\.then\("([^"]+)"\)', r'.then(pl.lit("\1"))', s)
+    s = re.sub(r"\.then\('([^']+)'\)", r".then(pl.lit('\1'))", s)
+    s = re.sub(r'\.otherwise\("([^"]+)"\)', r'.otherwise(pl.lit("\1"))', s)
+    s = re.sub(r"\.otherwise\('([^']+)'\)", r".otherwise(pl.lit('\1'))", s)
     return s.strip()
 
 

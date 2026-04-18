@@ -1,18 +1,12 @@
 [
   {
-    "model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+    "model": "Qwen/Qwen3-4B-Instruct-2507",
     "prompt": "baseline",
     "use_routing": true,
     "tag": "light"
   },
   {
-    "model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
-    "prompt": "baseline",
-    "use_routing": false,
-    "tag": "light"
-  },
-  {
-    "model": "Qwen/Qwen3-4B-Instruct-2507",
+    "model": "Qwen/Qwen2.5-Coder-7B-Instruct",
     "prompt": "baseline",
     "use_routing": true,
     "tag": "light"

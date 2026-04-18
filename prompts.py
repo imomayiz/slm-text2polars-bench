@@ -44,6 +44,11 @@ keep all columns needed in the result before sorting.
 8. Use only column names that appear in the schema. Do not guess data values — \
 use the string values exactly as they would appear in the data based on the question context.
 9. For computed columns, use .with_columns() before .group_by().
+10. Use modern Polars method names — NOT pandas aliases:
+   .group_by() NOT .groupby()  |  .is_in() NOT .isin()
+   .str.starts_with() NOT .str.startswith()  |  .str.ends_with() NOT .str.endswith()
+   .sort(descending=True) NOT .sort(reverse=True)  |  .unique() NOT .distinct()
+   .cum_sum() NOT .cumsum()  |  .then(pl.lit("x")) NOT .then("x")
 
 WRONG: result = df.filter(pl.col("x") > 5).collect().to_pandas()["y"].tolist()
 RIGHT: result = df.filter(pl.col("x") > 5).select("y")
