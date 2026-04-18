@@ -1,11 +1,12 @@
 """
-vLLM inference engine 
-    python -c "from inference import *; e = PolarsInferenceEngine(InferenceConfig()); \
+Hugging Face Transformers inference engine (CUDA/CPU).
+
+    python -c "from inference import *; e = PolarsInferenceEngine(InferenceConfig()); \\
         print(e.generate_one(question='sum of x', schema={'df': {'x': 'Int64'}}).code)"
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 
@@ -151,6 +152,18 @@ def clean_code(raw: str) -> str:
 
 # ---------- Engine ----------
 
+def _torch_dtype_from_str(s: str):
+    import torch
+    if s == "auto":
+        return "auto"
+    mapping = {
+        "bfloat16": torch.bfloat16,
+        "float16": torch.float16,
+        "float32": torch.float32,
+    }
+    return mapping.get(s, torch.bfloat16)
+
+
 @dataclass
 class InferenceConfig:
     model: str = "Qwen/Qwen2.5-Coder-1.5B-Instruct"
@@ -162,6 +175,7 @@ class InferenceConfig:
     stop: tuple[str, ...] = ("```", "\n\n\n", "Question:", "# End")
     enable_prefix_caching: bool = True
     tensor_parallel_size: int = 1
+    trust_remote_code: bool = True
 
 
 @dataclass
@@ -172,28 +186,97 @@ class InferenceResult:
 
 
 class PolarsInferenceEngine:
-    """One-time model load. Thread-safe for vLLM's internal batching."""
+    """One-time HF model load; greedy / temperature sampling via `model.generate`."""
 
     def __init__(self, cfg: InferenceConfig):
-        from vllm import LLM
-        self.cfg = cfg
-        self.llm = LLM(
-            model=cfg.model,
-            dtype=cfg.dtype,
-            max_model_len=cfg.max_model_len,
-            gpu_memory_utilization=cfg.gpu_memory_utilization,
-            enable_prefix_caching=cfg.enable_prefix_caching,
-            tensor_parallel_size=cfg.tensor_parallel_size,
-            trust_remote_code=True,
-        )
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
 
-    def _params(self, max_tokens: int | None, temperature: float | None):
-        from vllm import SamplingParams
-        return SamplingParams(
-            temperature=self.cfg.temperature if temperature is None else temperature,
-            top_p=1.0,
-            max_tokens=max_tokens or self.cfg.max_tokens,
-            stop=list(self.cfg.stop),
+        self.cfg = cfg
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            cfg.model, trust_remote_code=cfg.trust_remote_code,
+        )
+        if self.tokenizer.pad_token_id is None and self.tokenizer.eos_token is not None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+
+        td = _torch_dtype_from_str(cfg.dtype)
+        load_kw: dict[str, Any] = {"trust_remote_code": cfg.trust_remote_code}
+        if torch.cuda.is_available():
+            load_kw["device_map"] = "auto"
+            load_kw["torch_dtype"] = td if td != "auto" else "auto"
+        else:
+            load_kw["torch_dtype"] = torch.float32
+
+        self.model = AutoModelForCausalLM.from_pretrained(cfg.model, **load_kw)
+        self.model.eval()
+
+    @property
+    def device(self):
+        import torch
+        return next(self.model.parameters()).device
+
+    def _max_prompt_length(self, max_new_tokens: int) -> int:
+        cap = self.cfg.max_model_len
+        try:
+            ml = self.tokenizer.model_max_length
+            if ml is not None and ml < 10_000_000:
+                cap = min(cap, ml)
+        except Exception:
+            pass
+        return max(128, cap - max_new_tokens)
+
+    def _apply_chat_template(self, messages: list[dict]) -> str:
+        tok = self.tokenizer
+        if hasattr(tok, "apply_chat_template") and getattr(tok, "chat_template", None):
+            return tok.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True,
+            )
+        parts: list[str] = []
+        for m in messages:
+            parts.append(f"### {m['role']}\n{m['content']}")
+        return "\n\n".join(parts) + "\n### assistant\n"
+
+    def _generate_text(
+        self,
+        prompt: str,
+        max_tokens: int | None,
+        temperature: float | None,
+    ) -> InferenceResult:
+        import torch
+
+        max_tokens = max_tokens if max_tokens is not None else self.cfg.max_tokens
+        temperature = self.cfg.temperature if temperature is None else temperature
+
+        max_len = self._max_prompt_length(max_tokens)
+        enc = self.tokenizer(
+            prompt,
+            return_tensors="pt",
+            truncation=True,
+            max_length=max_len,
+        )
+        enc = {k: v.to(self.device) for k, v in enc.items()}
+
+        gen_kw: dict[str, Any] = {
+            "max_new_tokens": max_tokens,
+            "pad_token_id": self.tokenizer.pad_token_id,
+        }
+        if temperature is not None and temperature > 1e-6:
+            gen_kw["do_sample"] = True
+            gen_kw["temperature"] = temperature
+        else:
+            gen_kw["do_sample"] = False
+
+        with torch.inference_mode():
+            out_ids = self.model.generate(**enc, **gen_kw)
+
+        in_len = enc["input_ids"].shape[1]
+        new_ids = out_ids[0, in_len:]
+        text = self.tokenizer.decode(new_ids, skip_special_tokens=True)
+
+        return InferenceResult(
+            code=clean_code(text),
+            raw=text,
+            tokens=int(new_ids.numel()),
         )
 
     def generate_one(
@@ -204,67 +287,46 @@ class PolarsInferenceEngine:
         max_tokens: int | None = None,
         temperature: float | None = None,
     ) -> InferenceResult:
-        params = self._params(max_tokens, temperature)
-
         if prompt_override is not None:
-            outputs = self.llm.generate([prompt_override], params, use_tqdm=False)
-        else:
-            if question is None or schema is None:
-                raise ValueError("Need either prompt_override or (question + schema)")
-            msgs = build_messages(question, schema)
-            outputs = self.llm.chat([msgs], params, use_tqdm=False)
+            return self._generate_text(prompt_override, max_tokens, temperature)
+        if question is None or schema is None:
+            raise ValueError("Need either prompt_override or (question + schema)")
+        msgs = build_messages(question, schema)
+        prompt = self._apply_chat_template(msgs)
+        return self._generate_text(prompt, max_tokens, temperature)
 
-        out = outputs[0].outputs[0]
-        return InferenceResult(
-            code=clean_code(out.text),
-            raw=out.text,
-            tokens=len(out.token_ids),
-        )
+    def generate_from_messages_list(
+        self,
+        messages_list: list[list[dict]],
+        max_tokens: int | None = None,
+        temperature: float | None = None,
+    ) -> list[InferenceResult]:
+        """One forward per item (same semantics as batched vLLM chat, slower on HF)."""
+        return [
+            self._generate_text(self._apply_chat_template(msgs), max_tokens, temperature)
+            for msgs in messages_list
+        ]
 
     def generate_batch(self, items: list[dict[str, Any]]) -> list[InferenceResult]:
-        """Batch over a list of dicts. Each dict: question+schema or prompt_override."""
+        """Each dict: question+schema, prompt_override, or messages (+ optional max_tokens, temperature)."""
         if not items:
             return []
 
-        # Split into prompt-override vs structured; vLLM can't mix chat+completion
-        # in one call, so we handle them separately.
-        structured_idx = []
-        structured_msgs = []
-        raw_idx = []
-        raw_prompts = []
-        for i, it in enumerate(items):
-            if it.get("prompt_override"):
-                raw_idx.append(i)
-                raw_prompts.append(it["prompt_override"])
+        results: list[InferenceResult] = []
+        for it in items:
+            mt = it.get("max_tokens") or self.cfg.max_tokens
+            temp = it.get("temperature")
+            if temp is None:
+                temp = self.cfg.temperature
+
+            if it.get("prompt_override") is not None:
+                results.append(self._generate_text(it["prompt_override"], mt, temp))
+            elif it.get("messages") is not None:
+                prompt = self._apply_chat_template(it["messages"])
+                results.append(self._generate_text(prompt, mt, temp))
             else:
-                structured_idx.append(i)
-                structured_msgs.append(build_messages(it["question"], it["schema"]))
+                msgs = build_messages(it["question"], it["schema"])
+                prompt = self._apply_chat_template(msgs)
+                results.append(self._generate_text(prompt, mt, temp))
 
-        # Use per-call sampling params (items might override)
-        results: list[InferenceResult | None] = [None] * len(items)
-
-        if structured_msgs:
-            params = self._params(
-                items[structured_idx[0]].get("max_tokens"),
-                items[structured_idx[0]].get("temperature"),
-            )
-            outs = self.llm.chat(structured_msgs, params, use_tqdm=False)
-            for i, o in zip(structured_idx, outs):
-                t = o.outputs[0]
-                results[i] = InferenceResult(
-                    code=clean_code(t.text), raw=t.text, tokens=len(t.token_ids),
-                )
-
-        if raw_prompts:
-            params = self._params(
-                items[raw_idx[0]].get("max_tokens"),
-                items[raw_idx[0]].get("temperature"),
-            )
-            outs = self.llm.generate(raw_prompts, params, use_tqdm=False)
-            for i, o in zip(raw_idx, outs):
-                t = o.outputs[0]
-                results[i] = InferenceResult(
-                    code=clean_code(t.text), raw=t.text, tokens=len(t.token_ids),
-                )
-
-        return [r for r in results if r is not None]
+        return results

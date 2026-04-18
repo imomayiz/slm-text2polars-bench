@@ -1,16 +1,14 @@
 """
-vLLM-based Polars code generator for CUDA GPUs.
+Hugging Face Transformers–based Polars code generator for CUDA GPUs.
 
 Mirrors the interface of `generator.py` (MLX/Apple Silicon) so the bench
 runner can swap backends by import only.
 
 Two modes:
-  1) `PolarsGenerator.generate(items)` — batched greedy decode.
-     vLLM batches the whole list in one forward pass, which is the main
-     speed win vs. the MLX one-shot loop.
+  1) `PolarsGenerator.generate(items)` — sequential greedy decode (one HF
+     `generate` call per item).
   2) `PolarsGenerator.generate_with_repair(...)` — runs, catches errors,
-     retries failed items once with error feedback. Repair pass is also
-     batched across all failing items.
+     retries failed items once with error feedback.
 
 Usage:
     gen = PolarsGenerator("Qwen/Qwen2.5-Coder-7B-Instruct")
@@ -29,9 +27,7 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
-# Shared prompt/cleaning logic lives in inference.py (the vLLM path).
-# Reusing avoids drift between the API server and the bench runner.
-from inference import build_messages, clean_code
+from inference import InferenceConfig, PolarsInferenceEngine, build_messages
 
 
 # ---------- Generator ----------
@@ -45,10 +41,9 @@ class GenResult:
 
 class PolarsGenerator:
     """
-    vLLM wrapper for batch evaluation on CUDA.
+    Hugging Face Transformers wrapper for batch evaluation on CUDA.
 
-    Loads the model once; reuse across the whole bench. vLLM internally
-    handles continuous batching of the chat calls below.
+    Loads the model once; reuse across the whole bench.
     """
 
     def __init__(
@@ -62,10 +57,7 @@ class PolarsGenerator:
         enable_prefix_caching: bool = True,
         trust_remote_code: bool = True,
     ):
-        from vllm import LLM
-
-        self.model_name = model
-        self.llm = LLM(
+        self.cfg = InferenceConfig(
             model=model,
             dtype=dtype,
             max_model_len=max_model_len,
@@ -74,15 +66,7 @@ class PolarsGenerator:
             enable_prefix_caching=enable_prefix_caching,
             trust_remote_code=trust_remote_code,
         )
-
-    def _sampling_params(self, max_tokens: int, temperature: float):
-        from vllm import SamplingParams
-        return SamplingParams(
-            temperature=temperature,
-            top_p=1.0,
-            max_tokens=max_tokens,
-            stop=["```", "\n\n\n", "Question:", "# End"],
-        )
+        self.engine = PolarsInferenceEngine(self.cfg)
 
     def generate(
         self,
@@ -91,32 +75,30 @@ class PolarsGenerator:
         max_tokens: int = 256,
     ) -> list[GenResult]:
         """
-        Generate code for a list of items in a single batched vLLM call.
+        Generate code for each item (sequential HF generate).
         Each item: {"question": str, "schema": {df_name: {col: dtype, ...}}}
         """
         if not items:
             return []
 
-        messages_list = [build_messages(it["question"], it["schema"]) for it in items]
-        params = self._sampling_params(max_tokens, temperature)
-
+        batch_in = [
+            {
+                "question": it["question"],
+                "schema": it["schema"],
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+            }
+            for it in items
+        ]
         t0 = time.perf_counter()
-        outputs = self.llm.chat(messages_list, params, use_tqdm=False)
+        outs = self.engine.generate_batch(batch_in)
         elapsed = time.perf_counter() - t0
-
-        # vLLM returns outputs in input order. Amortize batch time across items
-        # so the per-item "gen_time" field stays meaningful for reporting.
         per_item_time = elapsed / max(len(items), 1)
 
-        results: list[GenResult] = []
-        for o in outputs:
-            raw = o.outputs[0].text
-            results.append(GenResult(
-                code=clean_code(raw),
-                raw=raw,
-                gen_time=per_item_time,
-            ))
-        return results
+        return [
+            GenResult(code=o.code, raw=o.raw, gen_time=per_item_time)
+            for o in outs
+        ]
 
     def generate_with_repair(
         self,
@@ -126,8 +108,7 @@ class PolarsGenerator:
         max_tokens: int = 256,
     ) -> list[dict[str, Any]]:
         """
-        Generate → execute → if error, one batched repair round with each
-        failing item's error fed back into the prompt.
+        Generate → execute → if error, one repair round with error feedback.
 
         Returns list of dicts with keys: code, exec_result, repaired, gen_time.
         """
@@ -159,19 +140,15 @@ class PolarsGenerator:
                 ))
 
         if retry_indices:
-            from vllm import SamplingParams
-            params = SamplingParams(
-                temperature=0.0, top_p=1.0, max_tokens=max_tokens,
-                stop=["```", "\n\n\n", "Question:", "# End"],
-            )
             t0 = time.perf_counter()
-            outputs = self.llm.chat(retry_messages, params, use_tqdm=False)
+            repair_outs = self.engine.generate_from_messages_list(
+                retry_messages, max_tokens=max_tokens, temperature=0.0,
+            )
             elapsed = time.perf_counter() - t0
             per_item_time = elapsed / max(len(retry_indices), 1)
 
             for j, idx in enumerate(retry_indices):
-                raw = outputs[j].outputs[0].text
-                repaired_code = clean_code(raw)
+                repaired_code = repair_outs[j].code
                 exec_res = run_generated_code(
                     repaired_code, dataframes_by_item[idx], timeout=timeout,
                 )

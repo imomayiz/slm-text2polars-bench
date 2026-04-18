@@ -1,9 +1,7 @@
 """
-End-to-end benchmark runner for CUDA GPUs (vLLM backend).
+End-to-end benchmark runner for CUDA GPUs (Hugging Face Transformers backend).
 
-Mirror of run_bench.py, but wired to the vLLM-based PolarsGenerator in
-generator_cuda.py. Exposes GPU-specific CLI knobs (--max-model-len,
---gpu-mem-util, --dtype, --tensor-parallel) that sweep.py already passes.
+Mirror of run_bench.py, but wired to PolarsGenerator in generator_cuda.py.
 
 Scoring formula:
     Score = N / (T * VRAM^0.1 * RAM^0.01)
@@ -67,7 +65,6 @@ def peak_vram_gb() -> float:
     try:
         import torch
         if torch.cuda.is_available():
-            # Sum across all visible devices (tensor-parallel setups).
             total = 0
             for i in range(torch.cuda.device_count()):
                 total += torch.cuda.max_memory_allocated(i)
@@ -82,7 +79,7 @@ def peak_ram_gb() -> float:
     Peak resident memory in GB. `ru_maxrss` is in KB on Linux, bytes on macOS.
     """
     rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-    if rss > 1e10:  # >10 GB in raw units => must be bytes (macOS)
+    if rss > 1e10:
         return rss / 1e9
     return rss / 1e6
 
@@ -108,16 +105,15 @@ def main():
     ap.add_argument("--limit", type=int, default=None,
                     help="Run only first N items (fast dev loop).")
 
-    # vLLM engine knobs
     ap.add_argument("--dtype", default="bfloat16",
                     choices=["auto", "bfloat16", "float16", "float32"])
     ap.add_argument("--max-model-len", type=int, default=4096)
     ap.add_argument("--gpu-mem-util", type=float, default=0.85,
-                    help="Fraction of GPU memory vLLM may allocate.")
+                    help="Reserved for config compatibility (HF uses device_map=auto).")
     ap.add_argument("--tensor-parallel", type=int, default=1,
-                    help="vLLM tensor_parallel_size (# GPUs).")
+                    help="Reserved for config compatibility (single-process HF).")
     ap.add_argument("--no-prefix-cache", action="store_true",
-                    help="Disable vLLM prefix caching.")
+                    help="No-op (vLLM-only; kept for script compatibility).")
     args = ap.parse_args()
 
     bench = load_bench(args.bench)
@@ -125,8 +121,7 @@ def main():
         bench = bench[: args.limit]
     print(f"Loaded {len(bench)} benchmark items")
 
-    # --- Load model
-    print(f"Loading {args.model} on CUDA (dtype={args.dtype}) ...")
+    print(f"Loading {args.model} (dtype={args.dtype}, Hugging Face Transformers) ...")
     t_load = time.perf_counter()
     gen = PolarsGenerator(
         model=args.model,
@@ -138,10 +133,8 @@ def main():
     )
     print(f"Model loaded in {time.perf_counter() - t_load:.1f}s")
 
-    # --- Prepare dataframes
     frames_by_item = [materialize_frames(item["data"]) for item in bench]
 
-    # --- Generate + execute (timed region excludes model load, matches run_bench.py)
     t_start = time.perf_counter()
 
     if args.repair:
@@ -163,7 +156,6 @@ def main():
 
     total_time = time.perf_counter() - t_start
 
-    # --- Score each item
     correct = 0
     records = []
     for item, r in zip(bench, per_item):
@@ -197,7 +189,7 @@ def main():
 
     summary = {
         "model": args.model,
-        "backend": "vllm-cuda",
+        "backend": "transformers-cuda",
         "dtype": args.dtype,
         "max_model_len": args.max_model_len,
         "gpu_mem_util": args.gpu_mem_util,
@@ -214,10 +206,9 @@ def main():
         "records": records,
     }
 
-    # --- Print + save
     print("\n" + "=" * 60)
     print(f"Model:       {args.model}")
-    print(f"Backend:     vLLM / CUDA ({args.dtype})")
+    print(f"Backend:     Hugging Face Transformers ({args.dtype})")
     print(f"Correct:     {correct} / {len(bench)}  "
           f"({100 * correct / max(len(bench), 1):.1f}%)")
     print(f"Total time:  {total_time:.2f}s")
@@ -228,7 +219,6 @@ def main():
         print(f"Repaired:    {summary['n_repaired']}")
     print("=" * 60)
 
-    # --- Error breakdown
     wrong = [r for r in records if not r["correct"]]
     if wrong:
         print(f"\n{len(wrong)} failures. First 3:")
