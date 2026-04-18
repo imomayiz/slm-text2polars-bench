@@ -8,6 +8,7 @@ and API-snippet routing (classify_question) can be toggled off for ablations.
 """
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -117,10 +118,12 @@ class InferenceConfig:
     trust_remote_code: bool = True
     prompt_variant: str = "baseline"
     use_routing: bool = True
-    # vLLM-specific knobs
-    gpu_memory_utilization: float = 0.90
-    tensor_parallel_size: int = 1
-    enforce_eager: bool = False
+    # vLLM-specific knobs. `gpu_memory_utilization` is a fraction of the
+    # *free* memory at startup. Lower it if the card is shared or has stale
+    # allocations; override via the GPU_MEM_UTIL env var.
+    gpu_memory_utilization: float = float(os.getenv("GPU_MEM_UTIL", "0.80"))
+    tensor_parallel_size: int = int(os.getenv("TP_SIZE", "1"))
+    enforce_eager: bool = os.getenv("ENFORCE_EAGER", "0") == "1"
     extra_vllm_kwargs: dict[str, Any] = field(default_factory=dict)
 
 
@@ -148,12 +151,33 @@ class PolarsInferenceEngine:
             cfg.model, trust_remote_code=cfg.trust_remote_code,
         )
 
+        gpu_util = cfg.gpu_memory_utilization
+        # Best-effort clamp: if the GPU already has a non-trivial allocation,
+        # vLLM's "% of total" request will blow past free memory and raise.
+        # Shrink the request to fit what's actually free, minus a 1 GiB safety
+        # margin. Only applies when CUDA is importable and reports a device.
+        try:
+            import torch
+            if torch.cuda.is_available():
+                free_b, total_b = torch.cuda.mem_get_info(0)
+                free_frac = free_b / total_b
+                max_allowed = max(0.30, free_frac - (1.0 * 1024**3) / total_b)
+                if gpu_util > max_allowed:
+                    print(
+                        f"[inference] Clamping gpu_memory_utilization "
+                        f"{gpu_util:.2f} -> {max_allowed:.2f} "
+                        f"(free {free_b/1024**3:.1f}/{total_b/1024**3:.1f} GiB)"
+                    )
+                    gpu_util = max_allowed
+        except Exception:
+            pass
+
         llm_kwargs: dict[str, Any] = {
             "model": cfg.model,
             "dtype": cfg.dtype,
             "max_model_len": cfg.max_model_len,
             "trust_remote_code": cfg.trust_remote_code,
-            "gpu_memory_utilization": cfg.gpu_memory_utilization,
+            "gpu_memory_utilization": gpu_util,
             "tensor_parallel_size": cfg.tensor_parallel_size,
             "enforce_eager": cfg.enforce_eager,
         }
