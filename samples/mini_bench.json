@@ -1,0 +1,102 @@
+[
+  {
+    "id": "s001",
+    "question": "How many employees are in the Eng department?",
+    "category": "filter",
+    "difficulty": "easy",
+    "schema": {
+      "df": {
+        "name": "String",
+        "department": "String",
+        "salary": "Float64"
+      }
+    },
+    "data": {
+      "df": [
+        {"name": "Alice", "department": "Eng", "salary": 120000.0},
+        {"name": "Bob", "department": "Eng", "salary": 95000.0},
+        {"name": "Carol", "department": "Sales", "salary": 85000.0},
+        {"name": "Dan", "department": "Sales", "salary": 110000.0}
+      ]
+    },
+    "reference_code": "result = df.filter(pl.col(\"department\") == \"Eng\").height",
+    "expected_output": {
+      "kind": "scalar",
+      "value": 2
+    },
+    "tolerance": {
+      "order_matters": false,
+      "float_atol": 1e-06
+    }
+  },
+  {
+    "id": "s002",
+    "question": "Average salary per department.",
+    "category": "groupby",
+    "difficulty": "easy",
+    "schema": {
+      "df": {
+        "name": "String",
+        "department": "String",
+        "salary": "Float64"
+      }
+    },
+    "data": {
+      "df": [
+        {"name": "Alice", "department": "Eng", "salary": 120000.0},
+        {"name": "Bob", "department": "Eng", "salary": 95000.0},
+        {"name": "Carol", "department": "Sales", "salary": 85000.0},
+        {"name": "Dan", "department": "Sales", "salary": 110000.0}
+      ]
+    },
+    "reference_code": "result = df.group_by(\"department\").agg(pl.col(\"salary\").mean().alias(\"avg_salary\")).sort(\"department\")",
+    "expected_output": {
+      "kind": "dataframe",
+      "value": [
+        {"department": "Eng", "avg_salary": 107500.0},
+        {"department": "Sales", "avg_salary": 97500.0}
+      ]
+    },
+    "tolerance": {
+      "order_matters": false,
+      "float_atol": 1e-06
+    }
+  },
+  {
+    "id": "s003",
+    "question": "Name of the customer with the largest order.",
+    "category": "join",
+    "difficulty": "medium",
+    "schema": {
+      "orders": {
+        "order_id": "Int64",
+        "customer_id": "Int64",
+        "amount": "Float64"
+      },
+      "customers": {
+        "customer_id": "Int64",
+        "name": "String"
+      }
+    },
+    "data": {
+      "orders": [
+        {"order_id": 1, "customer_id": 1, "amount": 500.0},
+        {"order_id": 2, "customer_id": 2, "amount": 1500.0},
+        {"order_id": 3, "customer_id": 1, "amount": 200.0}
+      ],
+      "customers": [
+        {"customer_id": 1, "name": "Acme"},
+        {"customer_id": 2, "name": "Globex"}
+      ]
+    },
+    "reference_code": "result = orders.join(customers, on=\"customer_id\").sort(\"amount\", descending=True).select(\"name\").head(1).item()",
+    "expected_output": {
+      "kind": "scalar",
+      "value": "Globex"
+    },
+    "tolerance": {
+      "order_matters": false,
+      "float_atol": 1e-06
+    }
+  }
+]

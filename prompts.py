@@ -32,9 +32,11 @@ Rules — follow them exactly:
 2. Assign the final answer to a variable named `result`.
 3. Use ONLY `pl` (Polars, already imported) and the DataFrames named in the schema. \
 Use exactly the DataFrame variable names given in the schema — do not guess or rename them.
-4. Do NOT import anything. Do NOT use pandas, .collect(), .to_pandas(), or .lazy().
+4. Do NOT import anything. Do NOT use pandas, pyarrow, .collect(), .to_pandas(), \
+.to_list(), .to_numpy(), .lazy(), or any non-Polars library.
 5. Use the Polars eager DataFrame API: pl.col("x"), .filter(), .group_by(), .agg(), \
 .with_columns(), .select(), .join(), .sort(), .head().
+   FORBIDDEN: .collect(), .to_pandas(), .to_list(), .to_frame(), pd.*, pa.*, import.
 6. Use .item() ONLY when the result is a single scalar value (one row, one column). \
 Never call .item() on a DataFrame with multiple rows or columns.
 7. If the question asks for "top N" or "largest/smallest", use .sort() then .head(N) — \
@@ -42,13 +44,17 @@ keep all columns needed in the result before sorting.
 8. Use only column names that appear in the schema. Do not guess data values — \
 use the string values exactly as they would appear in the data based on the question context.
 9. For computed columns, use .with_columns() before .group_by().
+
+WRONG: result = df.filter(pl.col("x") > 5).collect().to_pandas()["y"].tolist()
+RIGHT: result = df.filter(pl.col("x") > 5).select("y")
 """
 
 _TERSE_SYSTEM = """Write Polars (eager DataFrame) code that answers the question.
 Rules:
 - Output ONLY code. No prose, no markdown.
 - Assign the answer to `result`.
-- Use `pl` and the DataFrame names from the schema. No imports. No .lazy()/.collect()/pandas.
+- Use `pl` and the DataFrame names from the schema. No imports. No .lazy()/.collect()/pandas/pyarrow.
+- FORBIDDEN: .collect(), .to_pandas(), .to_list(), pd.*, pa.*, import.
 - Use .item() only for single-scalar answers.
 """
 

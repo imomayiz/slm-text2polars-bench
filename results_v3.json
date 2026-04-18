@@ -1,0 +1,124 @@
+{
+  "model": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+  "n_items": 10,
+  "N_correct": 8,
+  "accuracy": 0.8,
+  "T_total_seconds": 13.697000249999999,
+  "VRAM_GB": 0.0,
+  "RAM_GB": 1354.498048,
+  "score": 0.86128471400441,
+  "repair_enabled": false,
+  "n_repaired": 0,
+  "records": [
+    {
+      "id": "q001",
+      "question": "How many employees are in the Engineering department?",
+      "code": "result = df.filter(pl.col(\"department\") == \"Engineering\").select(pl.col(\"id\").count()).item()",
+      "repaired": false,
+      "exec_ok": true,
+      "correct": false,
+      "error": null,
+      "exec_time": 0.18725054200000102,
+      "gen_time": 1.4080223750000003
+    },
+    {
+      "id": "q002",
+      "question": "List the names of employees with salary above 100000.",
+      "code": "result = df.filter(pl.col(\"salary\") > 100000).select(\"name\").collect().to_pandas().name.tolist()",
+      "repaired": false,
+      "exec_ok": false,
+      "correct": false,
+      "error": "Traceback (most recent call last):\n  File \"<string>\", line 18, in _main\n  File \"<string>\", line 1, in <module>\nAttributeError: 'DataFrame' object has no attribute 'collect'",
+      "exec_time": 0.09602599999999839,
+      "gen_time": 1.3056391669999998
+    },
+    {
+      "id": "q003",
+      "question": "What is the average salary across all employees?",
+      "code": "result = df.select(pl.col(\"salary\").mean()).item()",
+      "repaired": false,
+      "exec_ok": true,
+      "correct": true,
+      "error": null,
+      "exec_time": 0.09426724999999792,
+      "gen_time": 0.853448459
+    },
+    {
+      "id": "q004",
+      "question": "What is the maximum salary in the Sales department?",
+      "code": "result = df.filter(pl.col(\"department\") == \"Sales\").select(pl.col(\"salary\").max()).item()",
+      "repaired": false,
+      "exec_ok": true,
+      "correct": true,
+      "error": null,
+      "exec_time": 0.09411891699999941,
+      "gen_time": 1.1293370830000002
+    },
+    {
+      "id": "q005",
+      "question": "Average salary per department.",
+      "code": "result = df.group_by(\"department\").agg(pl.col(\"salary\").mean().alias(\"avg_salary\")).sort(\"department\")",
+      "repaired": false,
+      "exec_ok": true,
+      "correct": true,
+      "error": null,
+      "exec_time": 0.09519287499999862,
+      "gen_time": 1.175930416
+    },
+    {
+      "id": "q006",
+      "question": "Total revenue per region, where revenue = quantity * price.",
+      "code": "result = (df.with_columns((pl.col(\"quantity\") * pl.col(\"price\")).alias(\"revenue\")).group_by(\"region\").agg(pl.col(\"revenue\").sum().alias(\"total_revenue\")).sort(\"region\"))",
+      "repaired": false,
+      "exec_ok": true,
+      "correct": true,
+      "error": null,
+      "exec_time": 0.096743416999999,
+      "gen_time": 1.7504071249999988
+    },
+    {
+      "id": "q007",
+      "question": "Top 3 highest-paid employees. Return name and salary, sorted by salary descending.",
+      "code": "result = df.sort(\"salary\", descending=True).head(3).select(\"name\", \"salary\")",
+      "repaired": false,
+      "exec_ok": true,
+      "correct": true,
+      "error": null,
+      "exec_time": 0.09644249999999843,
+      "gen_time": 1.0739701250000007
+    },
+    {
+      "id": "q008",
+      "question": "Total order amount per country.",
+      "code": "result = (orders.join(customers, on=\"customer_id\").group_by(\"country\").agg(pl.col(\"amount\").sum().alias(\"total_order_amount\")).sort(\"country\"))",
+      "repaired": false,
+      "exec_ok": true,
+      "correct": true,
+      "error": null,
+      "exec_time": 0.10028116700000211,
+      "gen_time": 1.480464249999999
+    },
+    {
+      "id": "q009",
+      "question": "Name of the customer with the largest single order.",
+      "code": "result = (orders.join(customers, on=\"customer_id\").sort(\"amount\", descending=True).select(\"name\").head(1).item())",
+      "repaired": false,
+      "exec_ok": true,
+      "correct": true,
+      "error": null,
+      "exec_time": 0.09270420800000068,
+      "gen_time": 1.2792020839999996
+    },
+    {
+      "id": "q010",
+      "question": "Number of distinct products sold in the EU region.",
+      "code": "result = df.filter(pl.col(\"region\") == \"EU\").select(pl.col(\"product\").n_unique()).item()",
+      "repaired": false,
+      "exec_ok": true,
+      "correct": true,
+      "error": null,
+      "exec_time": 0.09036045899999934,
+      "gen_time": 1.1821798749999992
+    }
+  ]
+}

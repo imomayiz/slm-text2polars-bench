@@ -98,8 +98,8 @@ def _serialize_value(val: Any) -> str:
     """Best-effort short string representation of a result value."""
     if isinstance(val, pl.DataFrame):
         if val.height <= 5:
-            return val.to_pandas().to_string(index=False)
-        return f"DataFrame({val.height}x{val.width}): {val.head(3).to_pandas().to_string(index=False)} ..."
+            return str(val)
+        return f"DataFrame({val.height}x{val.width}):\n{val.head(3)}\n..."
     if isinstance(val, pl.Series):
         return str(val.to_list()[:10])
     return repr(val)

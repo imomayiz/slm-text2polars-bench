@@ -60,7 +60,18 @@ _RUNNER = textwrap.dedent("""
 
         # Rehydrate dataframes in-process (fast, avoids repickling Polars objects
         # which can be fragile across versions).
-        ns = {"pl": pl}
+        _ALLOWED_IMPORTS = {"polars", "pl", "datetime", "math", "re"}
+        _real_import = __builtins__.__import__
+        def _guarded_import(name, *args, **kwargs):
+            top = name.split(".")[0]
+            if top not in _ALLOWED_IMPORTS:
+                raise ImportError(f"Import of '{name}' is not allowed. Use only Polars (pl).")
+            return _real_import(name, *args, **kwargs)
+
+        safe_builtins = dict(__builtins__.__dict__) if hasattr(__builtins__, '__dict__') else dict(__builtins__)
+        safe_builtins["__import__"] = _guarded_import
+
+        ns = {"__builtins__": safe_builtins, "pl": pl}
         for name, buf in frames.items():
             ns[name] = pl.read_parquet(io.BytesIO(buf))
 

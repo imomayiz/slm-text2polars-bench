@@ -71,7 +71,16 @@ def clean_code(raw: str) -> str:
     for prefix in ("Here is the code:", "Here's the code:", "Answer:", "Code:"):
         if s.lower().startswith(prefix.lower()):
             s = s[len(prefix):].lstrip("\n ").strip()
-    return s
+    # Strip import lines that small models sometimes emit
+    lines = s.split("\n")
+    lines = [l for l in lines if not l.strip().startswith(("import ", "from "))]
+    s = "\n".join(lines).strip()
+    # Strip pandas/pyarrow tail calls: .collect(), .to_pandas(), .to_list(), .to_numpy()
+    import re
+    s = re.sub(r'\.collect\(\)', '', s)
+    s = re.sub(r'\.to_pandas\(\)[^\n]*', '', s)
+    s = re.sub(r'\.to_numpy\(\)[^\n]*', '', s)
+    return s.strip()
 
 
 # ---------- Engine ----------
